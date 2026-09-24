@@ -25,6 +25,8 @@ type NumericField =
   | "materialityPercent"
   | "materialityAmount";
 
+type AiRequestStatus = "idle" | "loading" | "success" | "error";
+
 const defaultFormState: FormState = {
   account: "Software Expense",
   period: "August 2026",
@@ -124,6 +126,9 @@ function directionClassName(direction: VarianceDirection): string {
 
 export default function Home() {
   const [formState, setFormState] = useState<FormState>(defaultFormState);
+  const [aiStatus, setAiStatus] = useState<AiRequestStatus>("idle");
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiError, setAiError] = useState("");
 
   const numericErrors = useMemo(() => getNumericErrors(formState), [formState]);
   const varianceInput = useMemo(() => buildVarianceInput(formState), [formState]);
@@ -138,6 +143,72 @@ export default function Home() {
       ...current,
       [name]: value
     }));
+    setAiStatus("idle");
+    setAiAnalysis("");
+    setAiError("");
+  }
+
+  function resetDefaults() {
+    setFormState(defaultFormState);
+    setAiStatus("idle");
+    setAiAnalysis("");
+    setAiError("");
+  }
+
+  async function generateAiCommentary() {
+    if (varianceInput === null) {
+      setAiStatus("error");
+      setAiError("Enter valid inputs before requesting AI commentary.");
+      return;
+    }
+
+    setAiStatus("loading");
+    setAiAnalysis("");
+    setAiError("");
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(varianceInput)
+      });
+
+      const data: unknown = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message =
+          typeof data === "object" &&
+          data !== null &&
+          "error" in data &&
+          typeof data.error === "string"
+            ? data.error
+            : "AI analysis failed. Please try again.";
+
+        throw new Error(message);
+      }
+
+      if (
+        typeof data !== "object" ||
+        data === null ||
+        !("analysis" in data) ||
+        typeof data.analysis !== "string" ||
+        data.analysis.trim() === ""
+      ) {
+        throw new Error("AI analysis returned no commentary. Please try again.");
+      }
+
+      setAiAnalysis(data.analysis.trim());
+      setAiStatus("success");
+    } catch (error) {
+      setAiStatus("error");
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : "Network failure while requesting AI commentary."
+      );
+    }
   }
 
   return (
@@ -146,10 +217,10 @@ export default function Home() {
         <section className="hero" aria-labelledby="page-title">
           <p className="eyebrow">FP&amp;A Portfolio Project</p>
           <h1 id="page-title">AI FP&amp;A Variance Analyzer</h1>
-          <p className="subtitle">Deterministic Financial Analysis — V1</p>
+          <p className="subtitle">Deterministic Financial Analysis + AI Commentary — V2</p>
           <p className="intro">
-            V1 performs financial calculations using deterministic application
-            logic. AI analysis will be introduced in later versions.
+            Financial calculations are verified by deterministic TypeScript. AI
+            is used only for management interpretation.
           </p>
         </section>
 
@@ -291,7 +362,7 @@ export default function Home() {
                 <button
                   className="secondary-button"
                   type="button"
-                  onClick={() => setFormState(defaultFormState)}
+                  onClick={resetDefaults}
                 >
                   Reset defaults
                 </button>
@@ -431,6 +502,64 @@ export default function Home() {
             </div>
           </section>
         </div>
+
+        <section className="panel ai-panel" aria-labelledby="ai-heading">
+          <div className="panel-header">
+            <h2 id="ai-heading">AI Management Analysis</h2>
+            <p>
+              Financial calculations are verified by deterministic TypeScript.
+              AI is used only for management interpretation.
+            </p>
+          </div>
+
+          <div className="ai-content">
+            <div className="ai-actions">
+              <button
+                className="primary-button"
+                type="button"
+                disabled={varianceInput === null || aiStatus === "loading"}
+                onClick={generateAiCommentary}
+              >
+                {aiStatus === "loading"
+                  ? "Generating commentary..."
+                  : "Generate AI Commentary"}
+              </button>
+              {varianceInput === null ? (
+                <span className="ai-inline-note">
+                  Enter valid financial inputs first.
+                </span>
+              ) : null}
+            </div>
+
+            {aiStatus === "idle" ? (
+              <div className="ai-placeholder">
+                <p>
+                  AI commentary is generated only when requested, using verified
+                  server-side results.
+                </p>
+              </div>
+            ) : null}
+
+            {aiStatus === "loading" ? (
+              <div className="ai-placeholder" role="status">
+                <p>Preparing CFO-ready management commentary...</p>
+              </div>
+            ) : null}
+
+            {aiStatus === "error" ? (
+              <div className="ai-error" role="alert">
+                <strong>Unable to generate commentary</strong>
+                <p>{aiError}</p>
+              </div>
+            ) : null}
+
+            {aiStatus === "success" ? (
+              <div className="ai-response" aria-live="polite">
+                <pre>{aiAnalysis}</pre>
+              </div>
+            ) : null}
+          </div>
+        </section>
       </div>
     </main>
   );

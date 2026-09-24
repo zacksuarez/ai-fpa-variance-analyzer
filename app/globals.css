@@ -175,6 +175,26 @@ h1 {
   border-color: #98a2b3;
 }
 
+.primary-button {
+  min-height: 44px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 18px;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .results {
   display: grid;
   gap: 18px;
@@ -309,6 +329,71 @@ h1 {
 
 .calculation-note p {
   margin-bottom: 0;
+}
+
+.ai-panel {
+  margin-top: 22px;
+}
+
+.ai-content {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.ai-inline-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ai-placeholder,
+.ai-response,
+.ai-error {
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.ai-placeholder {
+  border: 1px dashed #98a2b3;
+  background: var(--panel-subtle);
+  color: var(--muted);
+}
+
+.ai-placeholder p,
+.ai-error p {
+  margin-bottom: 0;
+}
+
+.ai-error {
+  border: 1px solid #fda29b;
+  background: #fef3f2;
+  color: var(--danger);
+}
+
+.ai-error strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ai-response {
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #134e4a;
+}
+
+.ai-response pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.6;
 }
 
 @media (max-width: 900px) {
