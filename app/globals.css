@@ -335,6 +335,59 @@ h1 {
   margin-top: 22px;
 }
 
+.support-panel {
+  margin-top: 22px;
+}
+
+.support-content {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.support-table-wrap {
+  overflow-x: auto;
+}
+
+.support-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.support-table th,
+.support-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.support-table th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.support-table input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.table-button {
+  min-height: 36px;
+  border: 1px solid #fda29b;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--danger);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 10px;
+}
+
 .ai-content {
   display: grid;
   gap: 16px;
@@ -424,7 +477,7 @@ h1 {
 
 .root-cause-status {
   display: inline-flex;
-  width: fit-content;
+  max-width: 100%;
   border: 1px solid #fdb022;
   border-radius: 999px;
   background: #fffaeb;
@@ -432,6 +485,22 @@ h1 {
   font-size: 0.86rem;
   font-weight: 800;
   padding: 6px 10px;
+}
+
+.driver-list {
+  display: grid;
+  gap: 10px;
+}
+
+.driver-card {
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.driver-card p {
+  margin: 6px 0 0;
 }
 
 .developer-view {

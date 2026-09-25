@@ -15,6 +15,12 @@ const validAnalysis: ManagementAnalysis = {
     "The forecast variance is material."
   ],
   rootCauseKnown: false,
+  evidenceBasedDrivers: [
+    {
+      name: "Salesforce",
+      contributionSummary: "Salesforce accounts for 48.0% of the forecast variance."
+    }
+  ],
   unknownDrivers: ["No supporting driver evidence has been provided."],
   recommendedFollowUp: ["Review vendor-level spend detail."]
 };
@@ -51,11 +57,24 @@ test("structured analysis schema rejects unexpected fields", () => {
   );
 });
 
-test("V3 business validation rejects rootCauseKnown=true", () => {
+test("business validation rejects rootCauseKnown=true when evidence is insufficient", () => {
   assert.throws(() =>
     validateManagementAnalysisBusinessRules({
       ...validAnalysis,
       rootCauseKnown: true
-    })
+    }, { evidenceSufficient: false })
+  );
+});
+
+test("business validation allows rootCauseKnown=true when evidence is sufficient", () => {
+  assert.equal(
+    validateManagementAnalysisBusinessRules(
+      {
+        ...validAnalysis,
+        rootCauseKnown: true
+      },
+      { evidenceSufficient: true }
+    ).rootCauseKnown,
+    true
   );
 });

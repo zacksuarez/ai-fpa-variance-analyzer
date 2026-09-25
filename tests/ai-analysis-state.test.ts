@@ -10,6 +10,12 @@ test("stale analysis can be cleared back to idle state", () => {
       executiveCommentary: "Prior commentary.",
       knownFacts: ["Prior known fact."],
       rootCauseKnown: false,
+      evidenceBasedDrivers: [
+        {
+          name: "Salesforce",
+          contributionSummary: "Prior contribution summary."
+        }
+      ],
       unknownDrivers: ["Prior unknown driver."],
       recommendedFollowUp: ["Prior follow-up."]
     }

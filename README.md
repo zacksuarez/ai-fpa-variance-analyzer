@@ -2,7 +2,7 @@
 
 AI FP&A Variance Analyzer is a professional portfolio project for learning how AI-assisted finance applications should be built in phases.
 
-V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaces free-form commentary with schema-enforced structured AI output that can be validated, typed, and rendered as structured UI.
+V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 adds supporting-detail evidence, contribution analysis, reconciliation, and evidence-aware AI interpretation.
 
 ## Architectural Principle
 
@@ -116,11 +116,81 @@ Business validation verifies meaning:
 
 Both checks matter. Schema validation protects the shape of the data, while business validation protects the finance logic and evidence rules.
 
+## V4 Supporting Evidence Architecture
+
+V4 adds editable vendor-style support rows for the Software Expense example. The default support detail is:
+
+| Name | Actual | Forecast | Variance |
+| --- | ---: | ---: | ---: |
+| Salesforce | $180,000 | $120,000 | $60,000 |
+| Snowflake | $140,000 | $100,000 | $40,000 |
+| Microsoft | $105,000 | $100,000 | $5,000 |
+| Other | $200,000 | $180,000 | $20,000 |
+
+These rows reconcile to the default top-level example:
+
+- Actual: $625,000
+- Forecast: $500,000
+- Forecast variance: $125,000
+
+```text
+User Inputs + Supporting Detail
+        ↓
+Server Validation
+        ↓
+Top-Level Deterministic Engine
+        +
+Supporting Detail Deterministic Engine
+        ↓
+Reconciliation
+        ↓
+Evidence Coverage / Sufficiency
+        ↓
+Verified Evidence Package
+        ↓
+OpenAI Structured Output
+        ↓
+Business Validation
+        ↓
+Structured UI
+```
+
+Supporting rows are useful because they move the analysis from "variance exists" toward "where the variance sits." The application still distinguishes a variance contributor from an ultimate operational root cause.
+
+For each support row, deterministic code calculates:
+
+- Row variance dollars: `actual - forecast`
+- Row variance percentage: `(actual - forecast) / forecast * 100`
+- Contribution percentage: `row variance dollars / top-level forecast variance * 100`
+
+The default contribution analysis is:
+
+- Salesforce: 48%
+- Snowflake: 32%
+- Microsoft: 4%
+- Other: 16%
+
+The app also calculates reconciliation and evidence coverage:
+
+- Support actual total vs top-level actual
+- Support forecast total vs top-level forecast
+- Support variance total vs top-level forecast variance
+- Unexplained variance
+- Evidence coverage percentage
+
+Evidence is sufficient only when:
+
+1. Variance reconciliation is true.
+2. Support explains at least 90% of the absolute top-level forecast variance.
+3. At least one support row has a non-zero variance.
+
+This is deterministic business logic, not an LLM judgment.
+
 ## Why Calculations Stay Outside the LLM
 
 Financial calculations are deterministic and auditable. The LLM should not be asked to calculate variance dollars, percentages, materiality, or direction. Those responsibilities belong to application code.
 
-AI is used for the part that benefits from language and judgment: concise CFO-ready interpretation, known facts, explicit unknowns, and recommended follow-up analysis.
+AI is used for the part that benefits from language and judgment: concise CFO-ready interpretation, known facts, evidence-supported variance contributors, explicit unknowns, and recommended follow-up analysis.
 
 Structured outputs make the AI result safer for downstream application use. The UI can render each field intentionally, future versions can store or compare individual fields, and later workflows can consume typed data instead of parsing prose.
 
@@ -135,11 +205,12 @@ The UI may display deterministic V1 results immediately for responsiveness, but 
 - `app/page.tsx` contains the interactive React UI and input validation.
 - `app/api/analyze/route.ts` contains the server-side AI analysis route.
 - `lib/variance.ts` contains reusable deterministic financial calculation logic and TypeScript types.
+- `lib/supporting-detail.ts` contains deterministic supporting-detail calculations, reconciliation, evidence coverage, and evidence sufficiency.
 - `lib/analysis-request.ts` validates API request payloads.
 - `lib/ai-management-analysis.ts` contains server-only OpenAI Responses API integration.
 - `lib/management-analysis-schema.ts` defines and validates the V3 structured output contract.
 - `lib/ai-analysis-state.ts` contains the small client-side AI result state contract.
-- `tests/` contains focused tests for schema validation, business validation, deterministic calculations, zero denominators, and stale analysis reset.
+- `tests/` contains focused tests for schema validation, business validation, deterministic calculations, support-row reconciliation, evidence coverage, invalid support data, zero denominators, and stale analysis reset.
 - `app/globals.css` contains the responsive FP&A-style interface styling.
 
 The calculation module is separated from the UI and OpenAI integration so it can be unit tested independently.
@@ -153,15 +224,17 @@ Deterministic application code is responsible for:
 - Variance direction rules
 - Safe handling of zero denominators
 - Formatting and validation support
+- Supporting-detail variance and contribution calculations
+- Reconciliation and evidence sufficiency
 
 AI is responsible for:
 
-- Explaining variance drivers in plain language
+- Explaining verified variance contributors in plain language
 - Interpreting ambiguous business context
 - Drafting narrative commentary
 - Reasoning from supporting evidence
 
-In V3, no supporting driver evidence is available yet, so AI output must keep `rootCauseKnown` false and identify unresolved drivers without inventing causes.
+In V4, vendor-level support can identify major financial variance contributors. It does not automatically prove the deeper operational cause. AI output should avoid unsupported claims about pricing, volume, license count, renewal timing, vendor behavior, or other causal mechanisms unless supplied evidence supports them.
 
 ## Calculation Formulas
 
@@ -248,7 +321,7 @@ npm run test
 
 ## OpenAI API Security
 
-V3 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
+V4 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
 
 - API key variable: `OPENAI_API_KEY`
 - Model: `gpt-5.6-luna`
@@ -264,16 +337,17 @@ V3 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - Direction logic assumes an expense account.
 - No saved scenarios or database persistence.
 - No file upload or spreadsheet ingestion.
-- No supporting driver evidence is supplied to the model yet, so root cause remains unknown.
+- Vendor-level support identifies financial contributors, not deeper operational root causes.
+- Evidence is manually entered and not persisted.
 
-V4 will introduce supporting evidence and driver analysis. V3 intentionally does not implement that yet.
+V5 will expand validation and guardrails. V4 intentionally does not implement V5+ yet.
 
 ## Roadmap
 
 - V1 — Deterministic variance engine — COMPLETE
 - V2 — AI API integration — COMPLETE
 - V3 — Structured JSON output — COMPLETE
-- V4 — Supporting evidence and driver analysis
+- V4 — Supporting evidence and driver analysis — COMPLETE
 - V5 — Validation and guardrails
 - V6 — Production-quality UI
 - V7 — Public deployment

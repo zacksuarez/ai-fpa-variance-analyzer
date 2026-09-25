@@ -8,6 +8,7 @@ import {
   ManagementAnalysisValidationError,
   type ManagementAnalysis
 } from "@/lib/management-analysis-schema";
+import type { SupportingEvidenceSummary } from "@/lib/supporting-detail";
 import type { VarianceResult } from "@/lib/variance";
 
 export const AI_COMMENTARY_MODEL = "gpt-5.6-luna";
@@ -17,19 +18,22 @@ ROLE:
 You are an FP&A manager preparing monthly management reporting for a CFO.
 
 OBJECTIVE:
-Interpret verified deterministic financial results.
+Interpret verified high-level variance results and verified supporting-detail contribution analysis.
 
 EVIDENCE RULES:
 - Treat supplied financial calculations as authoritative.
 - Do not recalculate or alter supplied calculations.
 - Use only supplied evidence.
-- Do not invent root causes.
+- Identify major evidence-supported variance contributors.
+- Do not invent unsupported operational causes.
 - Do not claim pricing, volume, vendor, license, timing, renewal, customer, or other drivers unless evidence explicitly supports them.
-- No supporting root-cause evidence is available in V3.
-- rootCauseKnown must therefore be false.
-- Unknown drivers should describe what remains unresolved, not present speculation as fact.
+- A vendor variance is a financial contributor, not necessarily the ultimate operational root cause.
+- If evidence is insufficient or unreconciled, clearly state that.
+- If evidence is sufficient, explain which rows account for the largest portions of the variance.
+- Mention unexplained variance when non-zero.
+- Unknown drivers should describe unresolved operational causes, not present speculation as fact.
 - Distinguish known facts from unknown causes.
-- Recommend specific next-step analysis where appropriate.
+- Recommended follow-up should focus on deeper causal investigation of significant contributors.
 
 STYLE:
 - concise
@@ -85,12 +89,12 @@ function buildVerifiedAnalysisContext(result: VarianceResult) {
     ),
     direction: result.forecastDirection,
     material: result.isMaterial,
-    supportingDriverEvidence: "None supplied in V3."
   };
 }
 
 export async function generateManagementAnalysis(
-  result: VarianceResult
+  result: VarianceResult,
+  supportingEvidence: SupportingEvidenceSummary
 ): Promise<ManagementAnalysis> {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -100,12 +104,33 @@ export async function generateManagementAnalysis(
 
   const client = new OpenAI({ apiKey });
   const verifiedContext = buildVerifiedAnalysisContext(result);
+  const verifiedEvidence = {
+    topLevel: verifiedContext,
+    supportingEvidence: supportingEvidence.rankedRows.map((row) => ({
+      name: row.name,
+      actual: row.actual,
+      forecast: row.forecast,
+      varianceDollars: row.varianceDollars,
+      variancePercent: roundNullablePercentage(row.variancePercent),
+      contributionPercent: roundNullablePercentage(row.contributionPercent)
+    })),
+    reconciliation: {
+      actualReconciles: supportingEvidence.actualReconciles,
+      forecastReconciles: supportingEvidence.forecastReconciles,
+      varianceReconciles: supportingEvidence.varianceReconciles,
+      evidenceCoveragePercent: roundNullablePercentage(
+        supportingEvidence.evidenceCoveragePercent
+      ),
+      unexplainedVariance: supportingEvidence.unexplainedVariance,
+      evidenceSufficient: supportingEvidence.evidenceSufficient
+    }
+  };
 
   const response = await client.responses.parse({
     model: AI_COMMENTARY_MODEL,
     instructions: MANAGEMENT_ANALYSIS_INSTRUCTIONS,
-    input: `Verified financial analysis:\n${JSON.stringify(
-      verifiedContext,
+    input: `Verified financial analysis and supporting evidence:\n${JSON.stringify(
+      verifiedEvidence,
       null,
       2
     )}`,
@@ -130,7 +155,9 @@ export async function generateManagementAnalysis(
   }
 
   try {
-    return validateManagementAnalysis(analysis);
+    return validateManagementAnalysis(analysis, {
+      evidenceSufficient: supportingEvidence.evidenceSufficient
+    });
   } catch (error) {
     if (error instanceof ManagementAnalysisValidationError) {
       throw new StructuredAnalysisValidationError(error.message);

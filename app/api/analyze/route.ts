@@ -6,6 +6,7 @@ import {
   StructuredAnalysisValidationError
 } from "@/lib/ai-management-analysis";
 import { parseVarianceInputPayload } from "@/lib/analysis-request";
+import { calculateSupportingEvidence } from "@/lib/supporting-detail";
 import { calculateVariance } from "@/lib/variance";
 
 export async function POST(request: Request) {
@@ -27,9 +28,16 @@ export async function POST(request: Request) {
   }
 
   const verifiedResult = calculateVariance(parsed.input);
+  const supportingEvidence = calculateSupportingEvidence(
+    parsed.supportingDetails,
+    verifiedResult
+  );
 
   try {
-    const analysis = await generateManagementAnalysis(verifiedResult);
+    const analysis = await generateManagementAnalysis(
+      verifiedResult,
+      supportingEvidence
+    );
 
     return NextResponse.json({ analysis });
   } catch (error) {

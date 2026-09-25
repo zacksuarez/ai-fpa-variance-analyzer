@@ -5,6 +5,14 @@ export const managementAnalysisSchema = z
     executiveCommentary: z.string(),
     knownFacts: z.array(z.string()),
     rootCauseKnown: z.boolean(),
+    evidenceBasedDrivers: z.array(
+      z
+        .object({
+          name: z.string(),
+          contributionSummary: z.string()
+        })
+        .strict()
+    ),
     unknownDrivers: z.array(z.string()),
     recommendedFollowUp: z.array(z.string())
   })
@@ -26,19 +34,24 @@ export function validateManagementAnalysisStructure(
 }
 
 export function validateManagementAnalysisBusinessRules(
-  analysis: ManagementAnalysis
+  analysis: ManagementAnalysis,
+  options: { evidenceSufficient: boolean } = { evidenceSufficient: false }
 ): ManagementAnalysis {
-  if (analysis.rootCauseKnown) {
+  if (!options.evidenceSufficient && analysis.rootCauseKnown) {
     throw new ManagementAnalysisValidationError(
-      "V3 cannot mark root cause as known because no supporting driver evidence is supplied."
+      "Root cause cannot be marked known without sufficient supporting evidence."
     );
   }
 
   return analysis;
 }
 
-export function validateManagementAnalysis(value: unknown): ManagementAnalysis {
+export function validateManagementAnalysis(
+  value: unknown,
+  options: { evidenceSufficient: boolean } = { evidenceSufficient: false }
+): ManagementAnalysis {
   return validateManagementAnalysisBusinessRules(
-    validateManagementAnalysisStructure(value)
+    validateManagementAnalysisStructure(value),
+    options
   );
 }

@@ -1,9 +1,11 @@
 import type { VarianceInput } from "@/lib/variance";
+import type { SupportingDetailInput } from "@/lib/supporting-detail";
 
 type ParseResult =
   | {
       ok: true;
       input: VarianceInput;
+      supportingDetails: SupportingDetailInput[];
     }
   | {
       ok: false;
@@ -48,6 +50,76 @@ function parseNumberField(
   }
 
   return value;
+}
+
+function parseSupportingDetailRows(payload: Record<string, unknown>):
+  | {
+      ok: true;
+      rows: SupportingDetailInput[];
+    }
+  | {
+      ok: false;
+      error: string;
+    } {
+  const rows = payload.supportingDetails;
+
+  if (!Array.isArray(rows)) {
+    return {
+      ok: false,
+      error: "supportingDetails must be an array."
+    };
+  }
+
+  const parsedRows: SupportingDetailInput[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    if (!isRecord(row)) {
+      return {
+        ok: false,
+        error: `supportingDetails[${index}] must be an object.`
+      };
+    }
+
+    const id = typeof row.id === "string" && row.id.trim() !== ""
+      ? row.id.trim()
+      : `row-${index + 1}`;
+    const name = typeof row.name === "string" ? row.name.trim() : "";
+    const actual = row.actual;
+    const forecast = row.forecast;
+
+    if (name === "") {
+      return {
+        ok: false,
+        error: `supportingDetails[${index}].name is required.`
+      };
+    }
+
+    if (typeof actual !== "number" || !Number.isFinite(actual)) {
+      return {
+        ok: false,
+        error: `supportingDetails[${index}].actual must be a finite number.`
+      };
+    }
+
+    if (typeof forecast !== "number" || !Number.isFinite(forecast)) {
+      return {
+        ok: false,
+        error: `supportingDetails[${index}].forecast must be a finite number.`
+      };
+    }
+
+    parsedRows.push({
+      id,
+      name,
+      actual,
+      forecast
+    });
+  }
+
+  return {
+    ok: true,
+    rows: parsedRows
+  };
 }
 
 export function parseVarianceInputPayload(payload: unknown): ParseResult {
@@ -111,6 +183,15 @@ export function parseVarianceInputPayload(payload: unknown): ParseResult {
     };
   }
 
+  const supportingDetails = parseSupportingDetailRows(payload);
+
+  if (!supportingDetails.ok) {
+    return {
+      ok: false,
+      error: supportingDetails.error
+    };
+  }
+
   return {
     ok: true,
     input: {
@@ -121,6 +202,7 @@ export function parseVarianceInputPayload(payload: unknown): ParseResult {
       priorYear,
       materialityPercent,
       materialityAmount
-    }
+    },
+    supportingDetails: supportingDetails.rows
   };
 }
