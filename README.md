@@ -2,7 +2,7 @@
 
 AI FP&A Variance Analyzer is a professional portfolio project for learning how AI-assisted finance applications should be built in phases.
 
-V1 established the deterministic variance engine. V2 adds server-side AI commentary while keeping the financial calculations outside the LLM.
+V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaces free-form commentary with schema-enforced structured AI output that can be validated, typed, and rendered as structured UI.
 
 ## Architectural Principle
 
@@ -59,11 +59,70 @@ The browser sends original financial inputs and materiality settings to `POST /a
 
 The OpenAI API is used only after verified financial results exist.
 
+## V3 Structured Output Architecture
+
+V3 moves from free-form model text to enforced structured output:
+
+```text
+User Inputs
+    ↓
+Client UI
+    ↓
+POST /api/analyze
+    ↓
+Server Validation
+    ↓
+Shared Deterministic TypeScript Engine
+    ↓
+Verified Financial Results
+    ↓
+OpenAI Responses API
+    ↓
+Schema-Enforced Structured Output
+    ↓
+Server Validation / Typed Result
+    ↓
+Structured UI Components
+```
+
+The AI response is constrained to this application contract:
+
+```json
+{
+  "executiveCommentary": "...",
+  "knownFacts": ["..."],
+  "rootCauseKnown": false,
+  "unknownDrivers": ["..."],
+  "recommendedFollowUp": ["..."]
+}
+```
+
+The app uses the OpenAI Responses API structured-output capability with a Zod schema. This is different from merely asking the model to "return JSON." A prompt-only JSON request may produce JSON-looking text, but it does not provide the same schema-constrained contract or typed parsed result.
+
+## Schema Validation vs Business Validation
+
+Schema validation verifies structure:
+
+- Required fields are present.
+- Field names use the expected camelCase contract.
+- Strings, booleans, and string arrays have the expected types.
+- Unexpected fields are rejected.
+
+Business validation verifies meaning:
+
+- V3 has no supporting root-cause evidence.
+- Therefore `rootCauseKnown` must be `false`.
+- If a model response marks root cause as known, the server rejects it even if the JSON structure is otherwise valid.
+
+Both checks matter. Schema validation protects the shape of the data, while business validation protects the finance logic and evidence rules.
+
 ## Why Calculations Stay Outside the LLM
 
 Financial calculations are deterministic and auditable. The LLM should not be asked to calculate variance dollars, percentages, materiality, or direction. Those responsibilities belong to application code.
 
 AI is used for the part that benefits from language and judgment: concise CFO-ready interpretation, known facts, explicit unknowns, and recommended follow-up analysis.
+
+Structured outputs make the AI result safer for downstream application use. The UI can render each field intentionally, future versions can store or compare individual fields, and later workflows can consume typed data instead of parsing prose.
 
 ## Server-Side Trust Boundary
 
@@ -78,6 +137,9 @@ The UI may display deterministic V1 results immediately for responsiveness, but 
 - `lib/variance.ts` contains reusable deterministic financial calculation logic and TypeScript types.
 - `lib/analysis-request.ts` validates API request payloads.
 - `lib/ai-management-analysis.ts` contains server-only OpenAI Responses API integration.
+- `lib/management-analysis-schema.ts` defines and validates the V3 structured output contract.
+- `lib/ai-analysis-state.ts` contains the small client-side AI result state contract.
+- `tests/` contains focused tests for schema validation, business validation, deterministic calculations, zero denominators, and stale analysis reset.
 - `app/globals.css` contains the responsive FP&A-style interface styling.
 
 The calculation module is separated from the UI and OpenAI integration so it can be unit tested independently.
@@ -99,7 +161,7 @@ AI is responsible for:
 - Drafting narrative commentary
 - Reasoning from supporting evidence
 
-In V2, no supporting driver evidence is available yet, so AI commentary must explicitly state that root cause is unknown.
+In V3, no supporting driver evidence is available yet, so AI output must keep `rootCauseKnown` false and identify unresolved drivers without inventing causes.
 
 ## Calculation Formulas
 
@@ -181,15 +243,17 @@ Run quality checks:
 npm run lint
 npm run typecheck
 npm run build
+npm run test
 ```
 
 ## OpenAI API Security
 
-V2 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
+V3 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
 
 - API key variable: `OPENAI_API_KEY`
 - Model: `gpt-5.6-luna`
 - Route: `POST /api/analyze`
+- Output: schema-enforced structured JSON parsed into typed application data
 - Browser calls only the local server route, never OpenAI directly.
 - No `NEXT_PUBLIC_` API key is used.
 - No real secrets are committed.
@@ -199,19 +263,16 @@ V2 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - Supports one manually entered variance scenario at a time.
 - Direction logic assumes an expense account.
 - No saved scenarios or database persistence.
-- AI analysis is plain text in V2.
-- No structured JSON/schema output yet.
 - No file upload or spreadsheet ingestion.
-- No automated tests yet.
 - No supporting driver evidence is supplied to the model yet, so root cause remains unknown.
 
-V3 will introduce structured JSON/schema output. V2 intentionally does not implement that yet.
+V4 will introduce supporting evidence and driver analysis. V3 intentionally does not implement that yet.
 
 ## Roadmap
 
-- V1 — Deterministic variance engine
-- V2 — AI API integration
-- V3 — Structured JSON output
+- V1 — Deterministic variance engine — COMPLETE
+- V2 — AI API integration — COMPLETE
+- V3 — Structured JSON output — COMPLETE
 - V4 — Supporting evidence and driver analysis
 - V5 — Validation and guardrails
 - V6 — Production-quality UI

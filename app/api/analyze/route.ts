@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import {
   EmptyModelResponseError,
   generateManagementAnalysis,
-  MissingOpenAIKeyError
+  MissingOpenAIKeyError,
+  StructuredAnalysisValidationError
 } from "@/lib/ai-management-analysis";
 import { parseVarianceInputPayload } from "@/lib/analysis-request";
 import { calculateVariance } from "@/lib/variance";
@@ -41,7 +42,14 @@ export async function POST(request: Request) {
 
     if (error instanceof EmptyModelResponseError) {
       return NextResponse.json(
-        { error: "AI analysis returned no commentary. Please try again." },
+        { error: "AI analysis returned no structured result. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    if (error instanceof StructuredAnalysisValidationError) {
+      return NextResponse.json(
+        { error: "AI analysis failed validation. Please try again." },
         { status: 502 }
       );
     }

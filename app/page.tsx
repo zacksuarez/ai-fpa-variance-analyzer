@@ -7,6 +7,13 @@ import {
   type VarianceDirection,
   type VarianceInput
 } from "@/lib/variance";
+import {
+  idleAiAnalysisState,
+  type AiAnalysisState
+} from "@/lib/ai-analysis-state";
+import {
+  type ManagementAnalysis
+} from "@/lib/management-analysis-schema";
 
 type FormState = {
   account: string;
@@ -24,8 +31,6 @@ type NumericField =
   | "priorYear"
   | "materialityPercent"
   | "materialityAmount";
-
-type AiRequestStatus = "idle" | "loading" | "success" | "error";
 
 const defaultFormState: FormState = {
   account: "Software Expense",
@@ -126,9 +131,7 @@ function directionClassName(direction: VarianceDirection): string {
 
 export default function Home() {
   const [formState, setFormState] = useState<FormState>(defaultFormState);
-  const [aiStatus, setAiStatus] = useState<AiRequestStatus>("idle");
-  const [aiAnalysis, setAiAnalysis] = useState("");
-  const [aiError, setAiError] = useState("");
+  const [aiState, setAiState] = useState<AiAnalysisState>(idleAiAnalysisState);
 
   const numericErrors = useMemo(() => getNumericErrors(formState), [formState]);
   const varianceInput = useMemo(() => buildVarianceInput(formState), [formState]);
@@ -143,28 +146,48 @@ export default function Home() {
       ...current,
       [name]: value
     }));
-    setAiStatus("idle");
-    setAiAnalysis("");
-    setAiError("");
+    setAiState(idleAiAnalysisState);
   }
 
   function resetDefaults() {
     setFormState(defaultFormState);
-    setAiStatus("idle");
-    setAiAnalysis("");
-    setAiError("");
+    setAiState(idleAiAnalysisState);
+  }
+
+  function isManagementAnalysis(value: unknown): value is ManagementAnalysis {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+
+    const analysis = value as Partial<Record<keyof ManagementAnalysis, unknown>>;
+
+    return (
+      typeof analysis.executiveCommentary === "string" &&
+      Array.isArray(analysis.knownFacts) &&
+      analysis.knownFacts.every((item) => typeof item === "string") &&
+      typeof analysis.rootCauseKnown === "boolean" &&
+      Array.isArray(analysis.unknownDrivers) &&
+      analysis.unknownDrivers.every((item) => typeof item === "string") &&
+      Array.isArray(analysis.recommendedFollowUp) &&
+      analysis.recommendedFollowUp.every((item) => typeof item === "string")
+    );
   }
 
   async function generateAiCommentary() {
     if (varianceInput === null) {
-      setAiStatus("error");
-      setAiError("Enter valid inputs before requesting AI commentary.");
+      setAiState({
+        status: "error",
+        analysis: null,
+        error: "Enter valid inputs before requesting AI commentary."
+      });
       return;
     }
 
-    setAiStatus("loading");
-    setAiAnalysis("");
-    setAiError("");
+    setAiState({
+      status: "loading",
+      analysis: null,
+      error: ""
+    });
 
     try {
       const response = await fetch("/api/analyze", {
@@ -193,21 +216,27 @@ export default function Home() {
         typeof data !== "object" ||
         data === null ||
         !("analysis" in data) ||
-        typeof data.analysis !== "string" ||
-        data.analysis.trim() === ""
+        !isManagementAnalysis(data.analysis)
       ) {
-        throw new Error("AI analysis returned no commentary. Please try again.");
+        throw new Error(
+          "AI analysis returned an invalid structured result. Please try again."
+        );
       }
 
-      setAiAnalysis(data.analysis.trim());
-      setAiStatus("success");
+      setAiState({
+        status: "success",
+        analysis: data.analysis,
+        error: ""
+      });
     } catch (error) {
-      setAiStatus("error");
-      setAiError(
-        error instanceof Error
-          ? error.message
-          : "Network failure while requesting AI commentary."
-      );
+      setAiState({
+        status: "error",
+        analysis: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Network failure while requesting AI commentary."
+      });
     }
   }
 
@@ -217,7 +246,7 @@ export default function Home() {
         <section className="hero" aria-labelledby="page-title">
           <p className="eyebrow">FP&amp;A Portfolio Project</p>
           <h1 id="page-title">AI FP&amp;A Variance Analyzer</h1>
-          <p className="subtitle">Deterministic Financial Analysis + AI Commentary — V2</p>
+          <p className="subtitle">Deterministic Financial Analysis + Structured AI Output — V3</p>
           <p className="intro">
             Financial calculations are verified by deterministic TypeScript. AI
             is used only for management interpretation.
@@ -517,11 +546,11 @@ export default function Home() {
               <button
                 className="primary-button"
                 type="button"
-                disabled={varianceInput === null || aiStatus === "loading"}
+                disabled={varianceInput === null || aiState.status === "loading"}
                 onClick={generateAiCommentary}
               >
-                {aiStatus === "loading"
-                  ? "Generating commentary..."
+                {aiState.status === "loading"
+                  ? "Generating structured analysis..."
                   : "Generate AI Commentary"}
               </button>
               {varianceInput === null ? (
@@ -531,31 +560,73 @@ export default function Home() {
               ) : null}
             </div>
 
-            {aiStatus === "idle" ? (
+            {aiState.status === "idle" ? (
               <div className="ai-placeholder">
                 <p>
-                  AI commentary is generated only when requested, using verified
-                  server-side results.
+                  AI commentary is generated only when requested, then returned
+                  as typed structured data for this interface.
                 </p>
               </div>
             ) : null}
 
-            {aiStatus === "loading" ? (
+            {aiState.status === "loading" ? (
               <div className="ai-placeholder" role="status">
-                <p>Preparing CFO-ready management commentary...</p>
+                <p>Preparing schema-validated CFO-ready analysis...</p>
               </div>
             ) : null}
 
-            {aiStatus === "error" ? (
+            {aiState.status === "error" ? (
               <div className="ai-error" role="alert">
                 <strong>Unable to generate commentary</strong>
-                <p>{aiError}</p>
+                <p>{aiState.error}</p>
               </div>
             ) : null}
 
-            {aiStatus === "success" ? (
+            {aiState.status === "success" && aiState.analysis ? (
               <div className="ai-response" aria-live="polite">
-                <pre>{aiAnalysis}</pre>
+                <div className="ai-section">
+                  <h3>Executive Commentary</h3>
+                  <p>{aiState.analysis.executiveCommentary}</p>
+                </div>
+
+                <div className="ai-section">
+                  <h3>Known Facts</h3>
+                  <ul>
+                    {aiState.analysis.knownFacts.map((fact) => (
+                      <li key={fact}>{fact}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="ai-section">
+                  <h3>Root Cause Status</h3>
+                  <div className="root-cause-status">
+                    UNKNOWN — supporting driver evidence has not been provided.
+                  </div>
+                </div>
+
+                <div className="ai-section">
+                  <h3>Unknown Drivers</h3>
+                  <ul>
+                    {aiState.analysis.unknownDrivers.map((driver) => (
+                      <li key={driver}>{driver}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="ai-section">
+                  <h3>Recommended Follow-Up</h3>
+                  <ul>
+                    {aiState.analysis.recommendedFollowUp.map((followUp) => (
+                      <li key={followUp}>{followUp}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <details className="developer-view">
+                  <summary>Developer View</summary>
+                  <pre>{JSON.stringify(aiState.analysis, null, 2)}</pre>
+                </details>
               </div>
             ) : null}
           </div>

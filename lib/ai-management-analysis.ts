@@ -1,6 +1,13 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
+import {
+  managementAnalysisSchema,
+  validateManagementAnalysis,
+  ManagementAnalysisValidationError,
+  type ManagementAnalysis
+} from "@/lib/management-analysis-schema";
 import type { VarianceResult } from "@/lib/variance";
 
 export const AI_COMMENTARY_MODEL = "gpt-5.6-luna";
@@ -10,7 +17,7 @@ ROLE:
 You are an FP&A manager preparing monthly management reporting for a CFO.
 
 OBJECTIVE:
-Interpret the verified financial analysis supplied by the application.
+Interpret verified deterministic financial results.
 
 EVIDENCE RULES:
 - Treat supplied financial calculations as authoritative.
@@ -18,7 +25,9 @@ EVIDENCE RULES:
 - Use only supplied evidence.
 - Do not invent root causes.
 - Do not claim pricing, volume, vendor, license, timing, renewal, customer, or other drivers unless evidence explicitly supports them.
-- For V2, no supporting driver evidence is supplied, so state clearly that the root cause is unknown.
+- No supporting root-cause evidence is available in V3.
+- rootCauseKnown must therefore be false.
+- Unknown drivers should describe what remains unresolved, not present speculation as fact.
 - Distinguish known facts from unknown causes.
 - Recommend specific next-step analysis where appropriate.
 
@@ -28,13 +37,6 @@ STYLE:
 - CFO-ready
 - no unnecessary AI disclaimers
 - no fabricated precision
-
-OUTPUT:
-Return plain text organized exactly under these headings:
-Executive Commentary
-Known Facts
-Unknown Drivers
-Recommended Follow-Up
 `.trim();
 
 export class MissingOpenAIKeyError extends Error {
@@ -48,6 +50,13 @@ export class EmptyModelResponseError extends Error {
   constructor() {
     super("The model returned an empty response.");
     this.name = "EmptyModelResponseError";
+  }
+}
+
+export class StructuredAnalysisValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StructuredAnalysisValidationError";
   }
 }
 
@@ -76,13 +85,13 @@ function buildVerifiedAnalysisContext(result: VarianceResult) {
     ),
     direction: result.forecastDirection,
     material: result.isMaterial,
-    supportingDriverEvidence: "None supplied in V2."
+    supportingDriverEvidence: "None supplied in V3."
   };
 }
 
 export async function generateManagementAnalysis(
   result: VarianceResult
-): Promise<string> {
+): Promise<ManagementAnalysis> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -92,7 +101,7 @@ export async function generateManagementAnalysis(
   const client = new OpenAI({ apiKey });
   const verifiedContext = buildVerifiedAnalysisContext(result);
 
-  const response = await client.responses.create({
+  const response = await client.responses.parse({
     model: AI_COMMENTARY_MODEL,
     instructions: MANAGEMENT_ANALYSIS_INSTRUCTIONS,
     input: `Verified financial analysis:\n${JSON.stringify(
@@ -100,15 +109,35 @@ export async function generateManagementAnalysis(
       null,
       2
     )}`,
+    text: {
+      format: zodTextFormat(
+        managementAnalysisSchema,
+        "management_analysis",
+        {
+          description:
+            "Structured CFO-ready FP&A management interpretation of verified variance results."
+        }
+      )
+    },
     max_output_tokens: 700,
     store: false
   });
 
-  const analysis = response.output_text.trim();
+  const analysis = response.output_parsed;
 
   if (!analysis) {
     throw new EmptyModelResponseError();
   }
 
-  return analysis;
+  try {
+    return validateManagementAnalysis(analysis);
+  } catch (error) {
+    if (error instanceof ManagementAnalysisValidationError) {
+      throw new StructuredAnalysisValidationError(error.message);
+    }
+
+    throw new StructuredAnalysisValidationError(
+      "Structured AI analysis did not match the required V3 contract."
+    );
+  }
 }
