@@ -19,6 +19,7 @@ import {
   defaultSupportingDetailRows,
   type SupportingDetailInput
 } from "@/lib/supporting-detail";
+import { getVarianceDriverStatus } from "@/lib/variance-driver-status";
 
 type FormState = {
   account: string;
@@ -866,7 +867,7 @@ export default function Home() {
                   </div>
 
                   <div className="variance-block">
-                    <p className="variance-label">Evidence Sufficient</p>
+                    <p className="variance-label">Contributor Evidence Sufficient</p>
                     <h3>{supportingEvidence.evidenceSufficient ? "YES" : "NO"}</h3>
                     <span
                       className={
@@ -957,11 +958,11 @@ export default function Home() {
                 </div>
 
                 <div className="ai-section">
-                  <h3>Variance Driver Status</h3>
+                  <h3>Variance Contributor Status</h3>
                   <div className="root-cause-status">
-                    {aiState.analysis.rootCauseKnown
-                      ? "SUPPORTED — financial variance contributors are sufficiently identified."
-                      : "UNRESOLVED — supporting evidence is insufficient or causal drivers require deeper analysis."}
+                    {getVarianceDriverStatus(
+                      supportingEvidence?.evidenceSufficient ?? false
+                    )}
                   </div>
                 </div>
 
@@ -982,7 +983,7 @@ export default function Home() {
                 </div>
 
                 <div className="ai-section">
-                  <h3>Unknown Drivers</h3>
+                  <h3>Unresolved Causal Drivers</h3>
                   <ul>
                     {aiState.analysis.unknownDrivers.map((driver) => (
                       <li key={driver}>{driver}</li>

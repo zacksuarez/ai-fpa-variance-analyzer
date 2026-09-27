@@ -25,11 +25,14 @@ EVIDENCE RULES:
 - Do not recalculate or alter supplied calculations.
 - Use only supplied evidence.
 - Identify major evidence-supported variance contributors.
+- evidenceSufficient refers only to whether the financial variance contributors are sufficiently identified.
 - Do not invent unsupported operational causes.
 - Do not claim pricing, volume, vendor, license, timing, renewal, customer, or other drivers unless evidence explicitly supports them.
 - A vendor variance is a financial contributor, not necessarily the ultimate operational root cause.
-- If evidence is insufficient or unreconciled, clearly state that.
-- If evidence is sufficient, explain which rows account for the largest portions of the variance.
+- If contributor evidence is insufficient or unreconciled, clearly state that the contributors remain unresolved.
+- If contributor evidence is sufficient, clearly state that the contributors are identified and explain which rows account for the largest portions of the variance.
+- Reconciled contributor evidence does not establish deeper operational or causal drivers.
+- Set rootCauseKnown to false because the supplied V4 evidence contains financial contribution detail, not causal operational evidence.
 - Mention unexplained variance when non-zero.
 - Unknown drivers should describe unresolved operational causes, not present speculation as fact.
 - Distinguish known facts from unknown causes.
@@ -156,7 +159,8 @@ export async function generateManagementAnalysis(
 
   try {
     return validateManagementAnalysis(analysis, {
-      evidenceSufficient: supportingEvidence.evidenceSufficient
+      contributorEvidenceSufficient: supportingEvidence.evidenceSufficient,
+      causalEvidenceSufficient: false
     });
   } catch (error) {
     if (error instanceof ManagementAnalysisValidationError) {

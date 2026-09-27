@@ -4,7 +4,11 @@ export const managementAnalysisSchema = z
   .object({
     executiveCommentary: z.string(),
     knownFacts: z.array(z.string()),
-    rootCauseKnown: z.boolean(),
+    rootCauseKnown: z
+      .boolean()
+      .describe(
+        "Whether supplied evidence establishes the underlying operational or causal root cause, not merely the financial variance contributors."
+      ),
     evidenceBasedDrivers: z.array(
       z
         .object({
@@ -19,6 +23,16 @@ export const managementAnalysisSchema = z
   .strict();
 
 export type ManagementAnalysis = z.infer<typeof managementAnalysisSchema>;
+
+type ManagementAnalysisEvidence = {
+  contributorEvidenceSufficient: boolean;
+  causalEvidenceSufficient: boolean;
+};
+
+const defaultEvidence: ManagementAnalysisEvidence = {
+  contributorEvidenceSufficient: false,
+  causalEvidenceSufficient: false
+};
 
 export class ManagementAnalysisValidationError extends Error {
   constructor(message: string) {
@@ -35,11 +49,20 @@ export function validateManagementAnalysisStructure(
 
 export function validateManagementAnalysisBusinessRules(
   analysis: ManagementAnalysis,
-  options: { evidenceSufficient: boolean } = { evidenceSufficient: false }
+  evidence: ManagementAnalysisEvidence = defaultEvidence
 ): ManagementAnalysis {
-  if (!options.evidenceSufficient && analysis.rootCauseKnown) {
+  if (analysis.rootCauseKnown && !evidence.causalEvidenceSufficient) {
     throw new ManagementAnalysisValidationError(
-      "Root cause cannot be marked known without sufficient supporting evidence."
+      "Operational root cause cannot be marked known from contributor evidence alone."
+    );
+  }
+
+  if (
+    evidence.contributorEvidenceSufficient &&
+    analysis.evidenceBasedDrivers.length === 0
+  ) {
+    throw new ManagementAnalysisValidationError(
+      "Sufficient contributor evidence must produce at least one evidence-based driver."
     );
   }
 
@@ -48,10 +71,10 @@ export function validateManagementAnalysisBusinessRules(
 
 export function validateManagementAnalysis(
   value: unknown,
-  options: { evidenceSufficient: boolean } = { evidenceSufficient: false }
+  evidence: ManagementAnalysisEvidence = defaultEvidence
 ): ManagementAnalysis {
   return validateManagementAnalysisBusinessRules(
     validateManagementAnalysisStructure(value),
-    options
+    evidence
   );
 }

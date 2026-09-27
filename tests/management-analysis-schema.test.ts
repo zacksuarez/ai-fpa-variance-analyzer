@@ -57,24 +57,42 @@ test("structured analysis schema rejects unexpected fields", () => {
   );
 });
 
-test("business validation rejects rootCauseKnown=true when evidence is insufficient", () => {
+test("business validation rejects a known root cause without causal evidence", () => {
   assert.throws(() =>
     validateManagementAnalysisBusinessRules({
       ...validAnalysis,
       rootCauseKnown: true
-    }, { evidenceSufficient: false })
+    }, {
+      contributorEvidenceSufficient: true,
+      causalEvidenceSufficient: false
+    })
   );
 });
 
-test("business validation allows rootCauseKnown=true when evidence is sufficient", () => {
+test("business validation preserves unresolved root cause with sufficient contributor evidence", () => {
   assert.equal(
+    validateManagementAnalysisBusinessRules(
+      validAnalysis,
+      {
+        contributorEvidenceSufficient: true,
+        causalEvidenceSufficient: false
+      }
+    ).rootCauseKnown,
+    false
+  );
+});
+
+test("business validation requires a driver when contributor evidence is sufficient", () => {
+  assert.throws(() =>
     validateManagementAnalysisBusinessRules(
       {
         ...validAnalysis,
-        rootCauseKnown: true
+        evidenceBasedDrivers: []
       },
-      { evidenceSufficient: true }
-    ).rootCauseKnown,
-    true
+      {
+        contributorEvidenceSufficient: true,
+        causalEvidenceSufficient: false
+      }
+    )
   );
 });
