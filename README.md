@@ -1,8 +1,55 @@
 # AI FP&A Variance Analyzer
 
-AI FP&A Variance Analyzer is a professional portfolio project for learning how AI-assisted finance applications should be built in phases.
+AI FP&A Variance Analyzer is a portfolio-grade finance application that combines deterministic variance calculations, reconciled supporting evidence, structured AI interpretation, and server-side business guardrails.
 
-V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 added supporting-detail evidence and reconciliation. V5 adds explicit trust boundaries, deterministic output guardrails, adversarial tests, and repeatable evaluation.
+V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 added supporting-detail evidence and reconciliation. V5 added explicit trust boundaries, deterministic output guardrails, adversarial tests, and repeatable evaluation. V6 presents those capabilities through a production-quality, responsive workflow.
+
+## Live Demo
+
+Public deployment is planned for V7. The complete V6 application runs locally today using the instructions below.
+
+## Screenshots
+
+The repository includes a [screenshot guide](docs/screenshots/README.md) with the views and filenames reserved for the public portfolio release. No placeholder screenshots are presented as real product captures.
+
+## What It Demonstrates
+
+- Deterministic finance calculations remain authoritative and auditable.
+- Supporting detail reconciles to top-level results and quantifies evidence coverage.
+- Structured AI output is schema validated and checked against business rules before display.
+- Variance contributors are distinguished from deeper operational root causes.
+- Untrusted text is separated from trusted instructions at the server boundary.
+- Loading, error, stale-result, responsive, and accessible interaction states are handled explicitly.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[User inputs and supporting detail] --> B[Server validation]
+    B --> C[Deterministic finance engines]
+    C --> D[Reconciliation and evidence package]
+    D --> E[Structured AI interpretation]
+    E --> F[Schema and business guardrails]
+    F --> G[Validated management analysis]
+```
+
+The browser calculates an immediate preview, but the server independently recomputes every financial result before building the AI context. The model interprets verified evidence; it never owns the calculations.
+
+## Version Journey
+
+| Version | Capability | Status |
+| --- | --- | --- |
+| V1 | Deterministic variance engine | Complete |
+| V2 | Server-side AI commentary | Complete |
+| V3 | Schema-enforced structured output | Complete |
+| V4 | Supporting evidence and reconciliation | Complete |
+| V5 | Guardrails, adversarial tests, and evaluation | Complete |
+| V6 | Production-quality portfolio UI | Complete |
+| V7 | Public deployment | Planned |
+
+## Reliability
+
+The normal quality pipeline is API-free and repeatable: TypeScript validation, ESLint, a production build, a 33-test unit and integration suite, and a 12-scenario deterministic evaluation. Live-model evaluation is isolated behind `npm run eval:live` so routine validation never incurs API cost or introduces model nondeterminism.
 
 ## Architectural Principle
 
@@ -304,6 +351,12 @@ This separation keeps normal development deterministic, fast, and free of API co
 
 V5 moves the project beyond a basic LLM integration by adding deterministic guardrails, adversarial test cases, and repeatable evaluation. The objective is not merely to generate plausible AI output, but to verify that AI behavior remains bounded by trusted financial logic.
 
+## V6 Production UI
+
+V6 turns the established V1-V5 system into a coherent finance workflow: calculate, reconcile, interpret, and validate. It improves information hierarchy, separates entered evidence from calculated fields, makes trust signals visible at the point of use, and gives structured AI output a stable layout across idle, loading, success, and failure states.
+
+The visual layer does not change the calculation, reconciliation, evidence-sufficiency, schema, or business-guardrail rules. It makes those existing boundaries easier to understand and audit.
+
 ## Project Structure
 
 - `app/page.tsx` contains the interactive React UI and input validation.
@@ -321,6 +374,7 @@ V5 moves the project beyond a basic LLM integration by adding deterministic guar
 - `scripts/evaluate-live.ts` runs the optional four-scenario live-model evaluation.
 - `tests/` contains focused finance, evidence, schema, business-guardrail, adversarial-input, and stale-state tests.
 - `app/globals.css` contains the responsive FP&A-style interface styling.
+- `docs/screenshots/` documents the capture set for the public portfolio release.
 
 The calculation module is separated from the UI and OpenAI integration so it can be unit tested independently.
 
@@ -437,7 +491,7 @@ npm run eval:live
 
 ## OpenAI API Security
 
-V5 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
+The application uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
 
 - API key variable: `OPENAI_API_KEY`
 - Model: `gpt-5.6-luna`
@@ -459,7 +513,7 @@ V5 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - Evidence is manually entered and not persisted.
 - Structured guardrails validate explicit fields and deterministic claims; they do not attempt brittle parsing of every possible sentence in AI prose.
 - Live-model behavior remains nondeterministic and should be reevaluated when prompts, schemas, evidence rules, or models change.
-- V5 does not add authentication, persistence, production monitoring, or the V6 interface redesign.
+- V6 does not add authentication, persistence, production monitoring, or public deployment.
 
 ## Roadmap
 
@@ -468,5 +522,5 @@ V5 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - V3 — Structured JSON output — COMPLETE
 - V4 — Supporting evidence and driver analysis — COMPLETE
 - V5 — Validation, guardrails, and evaluation — COMPLETE
-- V6 — Production-quality UI
+- V6 — Production-quality UI — COMPLETE
 - V7 — Public deployment

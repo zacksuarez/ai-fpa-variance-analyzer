@@ -154,7 +154,12 @@ function directionClassName(direction: VarianceDirection): string {
 }
 
 function formatReconciliationStatus(reconciles: boolean): string {
-  return reconciles ? "Reconciled" : "Needs review";
+  return reconciles ? "Reconciled" : "Not reconciled";
+}
+
+function formatDriverVariance(value: number): string {
+  const direction = value > 0 ? "unfavorable" : value < 0 ? "favorable" : "neutral";
+  return `${formatCurrency(Math.abs(value))} ${direction}`;
 }
 
 function buildSupportingDetailInputs(
@@ -427,30 +432,79 @@ export default function Home() {
   return (
     <main className="page-shell">
       <div className="app-frame">
-        <section className="hero" aria-labelledby="page-title">
-          <p className="eyebrow">FP&amp;A Portfolio Project</p>
-          <h1 id="page-title">AI FP&amp;A Variance Analyzer</h1>
-          <p className="subtitle">Deterministic Guardrails + Evaluated AI Analysis — V5</p>
-          <p className="intro">
-            Financial calculations are verified by deterministic TypeScript. AI
-            is used only for management interpretation.
-          </p>
+        <header className="hero" aria-labelledby="page-title">
+          <div className="hero-copy">
+            <p className="eyebrow">FP&amp;A Engineering Portfolio</p>
+            <h1 id="page-title">AI FP&amp;A Variance Analyzer</h1>
+            <p className="subtitle">Deterministic Finance + Grounded AI Analysis</p>
+            <p className="intro">
+              A portfolio application demonstrating how deterministic financial
+              logic, verified supporting evidence, structured AI outputs, and
+              business guardrails work together in an FP&amp;A workflow.
+            </p>
+          </div>
+          <div className="hero-chips" aria-label="Application capabilities">
+            <span>V6</span>
+            <span>Structured outputs</span>
+            <span>Guardrail validated</span>
+            <span>Evaluated</span>
+          </div>
+        </header>
+
+        <section className="workflow-band" aria-labelledby="workflow-heading">
+          <div className="workflow-heading">
+            <p className="section-kicker">How this works</p>
+            <h2 id="workflow-heading">Trusted facts first. AI interpretation second.</h2>
+          </div>
+          <ol className="workflow-list">
+            <li>
+              <span className="workflow-number">01</span>
+              <div>
+                <strong>Calculate</strong>
+                <p>TypeScript calculates variance, direction, and materiality.</p>
+              </div>
+            </li>
+            <li>
+              <span className="workflow-number">02</span>
+              <div>
+                <strong>Reconcile</strong>
+                <p>Supporting detail is reconciled to trusted totals.</p>
+              </div>
+            </li>
+            <li>
+              <span className="workflow-number">03</span>
+              <div>
+                <strong>Interpret</strong>
+                <p>AI interprets only the server-verified evidence package.</p>
+              </div>
+            </li>
+            <li>
+              <span className="workflow-number">04</span>
+              <div>
+                <strong>Validate</strong>
+                <p>Schema and business guardrails check every structured claim.</p>
+              </div>
+            </li>
+          </ol>
         </section>
 
         <div className="workspace">
           <section className="panel" aria-labelledby="input-heading">
             <div className="panel-header">
+              <p className="section-kicker">01 · Financial inputs</p>
               <h2 id="input-heading">Variance Inputs</h2>
-              <p>Enter one expense category and materiality threshold.</p>
+              <p>Define one expense scenario and the thresholds used to assess it.</p>
             </div>
 
             <form className="form-grid">
+              <p className="form-section-label">Scenario</p>
               <div className="field">
                 <label htmlFor="account">Account / Category</label>
                 <input
                   id="account"
                   name="account"
                   type="text"
+                  maxLength={120}
                   value={formState.account}
                   onChange={updateField}
                 />
@@ -462,11 +516,13 @@ export default function Home() {
                   id="period"
                   name="period"
                   type="text"
+                  maxLength={80}
                   value={formState.period}
                   onChange={updateField}
                 />
               </div>
 
+              <p className="form-section-label">Financial values</p>
               <div className="field">
                 <label htmlFor="actual">Actual</label>
                 <input
@@ -525,6 +581,7 @@ export default function Home() {
                 ) : null}
               </div>
 
+              <p className="form-section-label">Materiality settings</p>
               <div className="settings-grid">
                 <div className="field">
                   <label htmlFor="materialityPercent">Materiality %</label>
@@ -533,6 +590,7 @@ export default function Home() {
                     name="materialityPercent"
                     type="number"
                     inputMode="decimal"
+                    min="0"
                     value={formState.materialityPercent}
                     onChange={updateField}
                     aria-describedby={
@@ -555,6 +613,7 @@ export default function Home() {
                     name="materialityAmount"
                     type="number"
                     inputMode="decimal"
+                    min="0"
                     value={formState.materialityAmount}
                     onChange={updateField}
                     aria-describedby={
@@ -585,8 +644,14 @@ export default function Home() {
 
           <section className="panel" aria-labelledby="results-heading">
             <div className="panel-header">
-              <h2 id="results-heading">Variance Results</h2>
-              <p>All calculations are generated by deterministic TypeScript.</p>
+              <div className="panel-heading-row">
+                <div>
+                  <p className="section-kicker">02 · Deterministic engine</p>
+                  <h2 id="results-heading">Variance Results</h2>
+                </div>
+                <span className="trust-badge">Calculated by TypeScript</span>
+              </div>
+              <p>These values are calculated locally from the financial inputs.</p>
             </div>
 
             <div className="results">
@@ -635,34 +700,20 @@ export default function Home() {
                   </div>
 
                   <div className="variance-grid">
-                    <div className="variance-block">
+                    <div className="variance-block variance-block-primary">
                       <p className="variance-label">Actual vs Forecast</p>
                       <h3>Forecast variance</h3>
+                      <div className="primary-variance-value">
+                        {formatCurrency(varianceResult.forecastVarianceAmount)}
+                      </div>
+                      <div className="primary-variance-meta">
+                        <span>{formatPercentage(varianceResult.forecastVariancePercent)}</span>
+                        <span className={directionClassName(varianceResult.forecastDirection)}>
+                          {varianceResult.forecastDirection}
+                        </span>
+                      </div>
                       <div className="rows">
-                        <div className="result-row">
-                          <span>Variance $</span>
-                          <span>
-                            {formatCurrency(varianceResult.forecastVarianceAmount)}
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span>Variance %</span>
-                          <span>
-                            {formatPercentage(
-                              varianceResult.forecastVariancePercent
-                            )}
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span>Direction</span>
-                          <span
-                            className={directionClassName(
-                              varianceResult.forecastDirection
-                            )}
-                          >
-                            {varianceResult.forecastDirection}
-                          </span>
-                        </div>
+                        <div className="result-row"><span>Compared with</span><span>{formatCurrency(varianceResult.forecast)}</span></div>
                       </div>
                     </div>
 
@@ -718,10 +769,16 @@ export default function Home() {
 
         <section className="panel support-panel" aria-labelledby="support-heading">
           <div className="panel-header">
-            <h2 id="support-heading">Supporting Detail</h2>
+            <div className="panel-heading-row">
+              <div>
+                <p className="section-kicker">03 · Supporting evidence</p>
+                <h2 id="support-heading">Supporting Detail</h2>
+              </div>
+              <span className="calculated-key">Calculated fields are read-only</span>
+            </div>
             <p>
-              Vendor-level support is editable, but all row variance and
-              contribution calculations are deterministic.
+              Enter the detail behind the variance. Row variance and contribution
+              fields are calculated automatically.
             </p>
           </div>
 
@@ -729,14 +786,19 @@ export default function Home() {
             <div className="support-table-wrap">
               <table className="support-table">
                 <thead>
+                  <tr className="column-group-row">
+                    <th colSpan={3} scope="colgroup">Entered evidence</th>
+                    <th colSpan={3} scope="colgroup">Calculated</th>
+                    <th scope="colgroup">Row</th>
+                  </tr>
                   <tr>
-                    <th>Name</th>
-                    <th>Actual</th>
-                    <th>Forecast</th>
-                    <th>Variance $</th>
-                    <th>Variance %</th>
-                    <th>Contribution %</th>
-                    <th>Action</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" className="numeric-cell">Actual</th>
+                    <th scope="col" className="numeric-cell">Forecast</th>
+                    <th scope="col" className="numeric-cell">Variance $</th>
+                    <th scope="col" className="numeric-cell">Variance %</th>
+                    <th scope="col" className="numeric-cell">Contribution %</th>
+                    <th scope="col">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -751,6 +813,7 @@ export default function Home() {
                         <td>
                           <input
                             aria-label="Support row name"
+                            maxLength={200}
                             value={row.name}
                             onChange={(event) =>
                               updateSupportRow(row.id, "name", event.target.value)
@@ -760,7 +823,7 @@ export default function Home() {
                             <span className="field-error">{rowErrors.name}</span>
                           ) : null}
                         </td>
-                        <td>
+                        <td className="numeric-cell">
                           <input
                             aria-label={`${row.name || "Support row"} actual`}
                             type="number"
@@ -774,7 +837,7 @@ export default function Home() {
                             <span className="field-error">{rowErrors.actual}</span>
                           ) : null}
                         </td>
-                        <td>
+                        <td className="numeric-cell">
                           <input
                             aria-label={`${row.name || "Support row"} forecast`}
                             type="number"
@@ -794,17 +857,17 @@ export default function Home() {
                             </span>
                           ) : null}
                         </td>
-                        <td>
+                        <td className="numeric-cell calculated-cell">
                           {calculatedRow
                             ? formatCurrency(calculatedRow.varianceDollars)
                             : "—"}
                         </td>
-                        <td>
+                        <td className="numeric-cell calculated-cell">
                           {calculatedRow
                             ? formatPercentage(calculatedRow.variancePercent)
                             : "—"}
                         </td>
-                        <td>
+                        <td className="numeric-cell calculated-cell">
                           {calculatedRow
                             ? formatPercentage(calculatedRow.contributionPercent)
                             : "—"}
@@ -813,6 +876,7 @@ export default function Home() {
                           <button
                             className="table-button"
                             type="button"
+                            aria-label={`Remove ${row.name || "support row"}`}
                             onClick={() => removeSupportRow(row.id)}
                           >
                             Remove
@@ -825,18 +889,22 @@ export default function Home() {
               </table>
             </div>
 
-            <button className="secondary-button" type="button" onClick={addSupportRow}>
-              Add row
-            </button>
+            <div className="support-actions">
+              <button className="secondary-button" type="button" onClick={addSupportRow}>
+                Add supporting row
+              </button>
+              <span>{supportRows.length} supporting rows</span>
+            </div>
           </div>
         </section>
 
         <section className="panel support-panel" aria-labelledby="reconciliation-heading">
           <div className="panel-header">
-            <h2 id="reconciliation-heading">Reconciliation / Evidence Coverage</h2>
+            <p className="section-kicker">04 · Reconciliation</p>
+            <h2 id="reconciliation-heading">Evidence Coverage</h2>
             <p>
-              Support rows must reconcile before AI can treat the contributors as
-              sufficient evidence.
+              Confirm how completely supporting detail represents the trusted
+              financial totals before AI interpretation.
             </p>
           </div>
 
@@ -847,74 +915,84 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <div className="variance-grid">
-                  <div className="variance-block">
-                    <p className="variance-label">Actual Support Total</p>
-                    <h3>
-                      {formatCurrency(supportingEvidence.supportActualTotal)} /{" "}
-                      {formatCurrency(supportingEvidence.topLevelActual)}
-                    </h3>
-                    <span
-                      className={
-                        supportingEvidence.actualReconciles
-                          ? "status-pill status-favorable"
-                          : "status-pill status-unfavorable"
-                      }
-                    >
-                      {formatReconciliationStatus(
-                        supportingEvidence.actualReconciles
-                      )}
-                    </span>
+                <div className="coverage-summary">
+                  <div>
+                    <p className="variance-label">Forecast variance represented</p>
+                    <strong>{formatPercentage(supportingEvidence.evidenceCoveragePercent)}</strong>
                   </div>
-
-                  <div className="variance-block">
-                    <p className="variance-label">Forecast Support Total</p>
-                    <h3>
-                      {formatCurrency(supportingEvidence.supportForecastTotal)} /{" "}
-                      {formatCurrency(supportingEvidence.topLevelForecast)}
-                    </h3>
-                    <span
-                      className={
-                        supportingEvidence.forecastReconciles
-                          ? "status-pill status-favorable"
-                          : "status-pill status-unfavorable"
-                      }
-                    >
-                      {formatReconciliationStatus(
-                        supportingEvidence.forecastReconciles
-                      )}
-                    </span>
-                  </div>
+                  <p>
+                    {formatCurrency(supportingEvidence.supportingVarianceTotal)} of{" "}
+                    {formatCurrency(supportingEvidence.topLevelForecastVariance)} is
+                    represented by supporting detail.
+                  </p>
                 </div>
 
-                <div className="variance-grid">
-                  <div className="variance-block">
-                    <p className="variance-label">Variance Explained</p>
-                    <h3>
-                      {formatCurrency(supportingEvidence.supportingVarianceTotal)} /{" "}
-                      {formatCurrency(supportingEvidence.topLevelForecastVariance)}
-                    </h3>
-                    <div className="rows">
-                      <div className="result-row">
-                        <span>Coverage</span>
-                        <span>
-                          {formatPercentage(
-                            supportingEvidence.evidenceCoveragePercent
-                          )}
-                        </span>
-                      </div>
-                      <div className="result-row">
-                        <span>Unexplained Variance</span>
-                        <span>
-                          {formatCurrency(supportingEvidence.unexplainedVariance)}
-                        </span>
-                      </div>
-                    </div>
+                <div className="reconciliation-grid">
+                  <div className="reconciliation-item">
+                    <p>Actual reconciliation</p>
+                    <strong>{formatCurrency(supportingEvidence.supportActualTotal)}</strong>
+                    <span className="comparison-value">
+                      Trusted total {formatCurrency(supportingEvidence.topLevelActual)}
+                    </span>
+                    <span
+                      className={
+                        supportingEvidence.actualReconciles
+                          ? "status-pill status-favorable"
+                          : "status-pill status-unfavorable"
+                      }
+                    >
+                      {formatReconciliationStatus(
+                        supportingEvidence.actualReconciles
+                      )}
+                    </span>
                   </div>
 
-                  <div className="variance-block">
-                    <p className="variance-label">Contributor Evidence Sufficient</p>
-                    <h3>{supportingEvidence.evidenceSufficient ? "YES" : "NO"}</h3>
+                  <div className="reconciliation-item">
+                    <p>Forecast reconciliation</p>
+                    <strong>{formatCurrency(supportingEvidence.supportForecastTotal)}</strong>
+                    <span className="comparison-value">
+                      Trusted total {formatCurrency(supportingEvidence.topLevelForecast)}
+                    </span>
+                    <span
+                      className={
+                        supportingEvidence.forecastReconciles
+                          ? "status-pill status-favorable"
+                          : "status-pill status-unfavorable"
+                      }
+                    >
+                      {formatReconciliationStatus(
+                        supportingEvidence.forecastReconciles
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="reconciliation-item">
+                    <p>Variance reconciliation</p>
+                    <strong>{formatCurrency(supportingEvidence.supportingVarianceTotal)}</strong>
+                    <span className="comparison-value">
+                      Unexplained {formatCurrency(supportingEvidence.unexplainedVariance)}
+                    </span>
+                    <span
+                      className={
+                        supportingEvidence.varianceReconciles
+                          ? "status-pill status-favorable"
+                          : "status-pill status-unfavorable"
+                      }
+                    >
+                      {formatReconciliationStatus(supportingEvidence.varianceReconciles)}
+                    </span>
+                  </div>
+
+                  <div className="reconciliation-item reconciliation-item-emphasis">
+                    <p>Contributor evidence</p>
+                    <strong>
+                      {supportingEvidence.evidenceSufficient
+                        ? "Sufficient"
+                        : "Insufficient"}
+                    </strong>
+                    <span className="comparison-value">
+                      Financial contributor support
+                    </span>
                     <span
                       className={
                         supportingEvidence.evidenceSufficient
@@ -922,11 +1000,19 @@ export default function Home() {
                           : "status-pill status-unfavorable"
                       }
                     >
-                      {supportingEvidence.varianceReconciles
-                        ? "Variance reconciled"
-                        : "Variance needs review"}
+                      {supportingEvidence.evidenceSufficient
+                        ? "Sufficient"
+                        : "Insufficient"}
                     </span>
                   </div>
+                </div>
+
+                <div className="causal-boundary-note">
+                  <strong>Evidence boundary</strong>
+                  <p>
+                    Reconciled financial detail identifies where the variance sits.
+                    It does not prove the underlying operational cause.
+                  </p>
                 </div>
               </>
             )}
@@ -935,15 +1021,27 @@ export default function Home() {
 
         <section className="panel ai-panel" aria-labelledby="ai-heading">
           <div className="panel-header">
-            <h2 id="ai-heading">AI Management Analysis</h2>
+            <div className="panel-heading-row">
+              <div>
+                <p className="section-kicker">05 · Bounded interpretation</p>
+                <h2 id="ai-heading">AI Management Analysis</h2>
+              </div>
+              <span className="trust-badge">Guardrail checked</span>
+            </div>
             <p>
-              Financial calculations are verified by deterministic TypeScript.
-              AI output is schema-validated and checked against deterministic
-              financial guardrails before display.
+              AI receives server-verified financial results and supporting
+              evidence. It does not own the underlying calculations.
             </p>
           </div>
 
           <div className="ai-content">
+            <div className="ai-trust-line">
+              <span aria-hidden="true">01</span>
+              <p>
+                Responses must match the enforced schema and pass deterministic
+                business guardrails before they appear here.
+              </p>
+            </div>
             <div className="ai-actions">
               <button
                 className="primary-button"
@@ -968,16 +1066,18 @@ export default function Home() {
 
             {aiState.status === "idle" ? (
               <div className="ai-placeholder">
-                <p>
-                  AI commentary is generated only when requested, then returned
-                  as typed structured data for this interface.
-                </p>
+                <strong>Ready for grounded analysis</strong>
+                <p>Generate commentary when the evidence is ready. Any input change clears prior analysis so stale commentary is never retained.</p>
               </div>
             ) : null}
 
             {aiState.status === "loading" ? (
-              <div className="ai-placeholder" role="status">
-                <p>Preparing schema-validated CFO-ready analysis...</p>
+              <div className="ai-placeholder ai-loading" role="status">
+                <span className="loading-indicator" aria-hidden="true" />
+                <div>
+                  <strong>Preparing management analysis</strong>
+                  <p>Interpreting verified evidence and validating structured claims...</p>
+                </div>
               </div>
             ) : null}
 
@@ -990,12 +1090,17 @@ export default function Home() {
 
             {aiState.status === "success" && aiState.analysis ? (
               <div className="ai-response" aria-live="polite">
-                <div className="ai-section">
+                <div className="analysis-status-bar">
+                  <strong>Validated management output</strong>
+                  <span>Schema passed · Business guardrails passed</span>
+                </div>
+
+                <div className="ai-section ai-section-featured">
                   <h3>Executive Commentary</h3>
                   <p>{aiState.analysis.executiveCommentary}</p>
                 </div>
 
-                <div className="ai-section">
+                <div className="ai-section ai-section-compact">
                   <h3>Known Facts</h3>
                   <ul>
                     {aiState.analysis.knownFacts.map((fact) => (
@@ -1004,7 +1109,7 @@ export default function Home() {
                   </ul>
                 </div>
 
-                <div className="ai-section">
+                <div className="ai-section ai-section-compact">
                   <h3>Variance Contributor Status</h3>
                   <div className="root-cause-status">
                     {getVarianceDriverStatus(
@@ -1013,13 +1118,22 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="ai-section">
+                <div className="ai-section ai-section-wide">
                   <h3>Evidence-Based Drivers</h3>
                   {aiState.analysis.evidenceBasedDrivers.length > 0 ? (
                     <div className="driver-list">
                       {aiState.analysis.evidenceBasedDrivers.map((driver) => (
                         <div className="driver-card" key={driver.name}>
-                          <strong>{driver.name}</strong>
+                          <div className="driver-card-header">
+                            <strong>{driver.name}</strong>
+                            <span>Verified contribution</span>
+                          </div>
+                          <div className="driver-metrics">
+                            <span>{formatDriverVariance(driver.varianceDollars)}</span>
+                            <span>
+                              {formatPercentage(driver.contributionPercent)} of total variance
+                            </span>
+                          </div>
                           <p>{driver.contributionSummary}</p>
                         </div>
                       ))}
@@ -1029,7 +1143,7 @@ export default function Home() {
                   )}
                 </div>
 
-                <div className="ai-section">
+                <div className="ai-section ai-section-compact">
                   <h3>Unresolved Causal Drivers</h3>
                   <ul>
                     {aiState.analysis.unknownDrivers.map((driver) => (
@@ -1038,7 +1152,7 @@ export default function Home() {
                   </ul>
                 </div>
 
-                <div className="ai-section">
+                <div className="ai-section ai-section-compact">
                   <h3>Recommended Follow-Up</h3>
                   <ul>
                     {aiState.analysis.recommendedFollowUp.map((followUp) => (
@@ -1049,11 +1163,11 @@ export default function Home() {
 
                 <details className="developer-view">
                   <summary>Developer View</summary>
-                  <p>
-                    Schema Validation: {aiState.validation?.schemaValidation}
-                    <br />
-                    Business Guardrails: {aiState.validation?.businessGuardrails}
-                  </p>
+                  <div className="developer-status-grid">
+                    <span><strong>Schema validation</strong>{aiState.validation?.schemaValidation}</span>
+                    <span><strong>Business guardrails</strong>{aiState.validation?.businessGuardrails}</span>
+                    <span><strong>Evidence coverage</strong>{supportingEvidence ? formatPercentage(supportingEvidence.evidenceCoveragePercent) : "Unavailable"}</span>
+                  </div>
                   <pre>
                     {JSON.stringify(
                       {
@@ -1068,6 +1182,34 @@ export default function Home() {
               </div>
             ) : null}
           </div>
+        </section>
+
+        <section className="trust-section" aria-labelledby="trust-heading">
+          <div className="trust-section-heading">
+            <p className="section-kicker">Trust &amp; validation</p>
+            <h2 id="trust-heading">Controls around the model</h2>
+            <p>AI language remains bounded by higher-trust application logic.</p>
+          </div>
+          <ul className="trust-list">
+            <li><span>PASS</span>Financial calculations are deterministic</li>
+            <li><span>PASS</span>Supporting evidence is reconciled</li>
+            <li><span>PASS</span>AI output follows an enforced schema</li>
+            <li><span>PASS</span>Business guardrails validate model claims</li>
+            <li><span>PASS</span>Adversarial and regression scenarios are evaluated</li>
+          </ul>
+        </section>
+
+        <section className="portfolio-note" aria-labelledby="portfolio-heading">
+          <div>
+            <p className="section-kicker">Engineering portfolio</p>
+            <h2 id="portfolio-heading">Why This Project Matters</h2>
+          </div>
+          <p>
+            This project demonstrates deterministic and probabilistic system
+            design, OpenAI API integration, structured outputs, evidence
+            grounding, business guardrails, evaluation, and prompt-injection-aware
+            data handling in a focused finance workflow.
+          </p>
         </section>
       </div>
     </main>

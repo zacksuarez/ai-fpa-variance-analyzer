@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI FP&A Variance Analyzer",
-  description: "Deterministic Financial Analysis — V1"
+  description:
+    "Deterministic FP&A variance analysis with reconciled evidence, structured AI interpretation, and business guardrails."
 };
 
 export default function RootLayout({
