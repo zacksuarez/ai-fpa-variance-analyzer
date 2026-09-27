@@ -7,7 +7,9 @@
     "build": "next build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test \"tests/*.test.ts\""
+    "test": "node --experimental-strip-types --test \"tests/*.test.ts\"",
+    "eval": "node --experimental-strip-types scripts/evaluate-v5.ts",
+    "eval:live": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/evaluate-live.ts"
   },
   "dependencies": {
     "next": "^15.5.4",

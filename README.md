@@ -2,7 +2,7 @@
 
 AI FP&A Variance Analyzer is a professional portfolio project for learning how AI-assisted finance applications should be built in phases.
 
-V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 adds supporting-detail evidence, contribution analysis, reconciliation, and evidence-aware AI interpretation.
+V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 added supporting-detail evidence and reconciliation. V5 adds explicit trust boundaries, deterministic output guardrails, adversarial tests, and repeatable evaluation.
 
 ## Architectural Principle
 
@@ -200,6 +200,110 @@ Client input is untrusted. Server-side deterministic logic is authoritative.
 
 The UI may display deterministic V1 results immediately for responsiveness, but the API route independently derives the authoritative values used in the AI prompt.
 
+## V5 Validation, Guardrails, and Evaluation
+
+V5 moves the project from a working AI feature to an AI system with explicit controls around what may be trusted. The trust hierarchy is:
+
+1. Server-side deterministic calculations
+2. Server-side business rules and validation
+3. Schema-validated application contracts
+4. Verified supporting evidence
+5. LLM interpretation
+6. Raw user-supplied text
+
+The LLM cannot override a higher-trust layer. The server recomputes every financial result, packages verified evidence, validates the model response against a strict schema, and then compares its structured claims with deterministic results before returning anything to the browser.
+
+```text
+User Inputs
+    ↓
+Input Validation
+    ↓
+Server Trust Boundary
+    ↓
+Deterministic Financial + Supporting Evidence Engines
+    ↓
+Reconciliation / Evidence Sufficiency
+    ↓
+Verified Evidence Package
+    ↓
+LLM with Trusted-Instructions / Untrusted-Data Separation
+    ↓
+Schema Validation
+    ↓
+Business Guardrails
+    ↓
+Structured UI or Safe Failure
+    ↓
+Evaluation / Regression Tests
+```
+
+### Input Guardrails
+
+Server validation requires non-empty account and period fields, finite financial values, non-negative materiality thresholds, valid supporting rows, bounded text lengths, at most 100 support rows, and a bounded request body. Invalid data is rejected with a sanitized message and is never silently truncated. Financial values have no arbitrary amount cap.
+
+### Prompt-Injection Boundary
+
+Account, period, support names, and future descriptive evidence are untrusted literal data. The verified evidence package labels text fields accordingly and places them inside a delimited data block separate from trusted application instructions. The trusted instructions explicitly prohibit following instructions embedded in data fields.
+
+This is defense in depth, not a keyword filter:
+
+```text
+trusted instructions
++ untrusted-data separation
++ deterministic calculations
++ structured output
++ business validation
++ evaluation
+```
+
+Prompt injection cannot be solved simply by telling a model to ignore prompt injection. The application also prevents untrusted text from changing calculations, verifies structured claims against known support rows, and rejects contradictions before display.
+
+### Three Validation Layers
+
+Schema validation asks: **Did the AI return the correct structure?**
+
+Business validation asks: **Does the structured answer obey verified financial rules?**
+
+Evaluation asks: **Does the complete system behave correctly across expected and adversarial scenarios?**
+
+These layers remain separate. Zod and the Responses API enforce the application contract. The deterministic guardrail engine then verifies root-cause status, contributor sufficiency, driver identity, driver variance and contribution values, top-level variance, percentage, materiality, and reconciliation. A structurally valid response can still fail business validation.
+
+The internal guardrail contract is:
+
+```ts
+type GuardrailResult = {
+  passed: boolean;
+  failures: string[];
+};
+```
+
+Critical failures are not displayed as management analysis. The browser receives a professional validation error, while server diagnostics record only safe failure categories rather than API keys, hidden instructions, or raw financial payloads.
+
+### Deterministic and Live Evals
+
+`npm run eval` executes twelve deterministic scenarios locally with no OpenAI call:
+
+- Default reconciled evidence
+- Partial evidence below 90% coverage
+- Unreconciled support
+- No supporting rows
+- Zero denominator
+- Non-material variance
+- Unsupported root cause
+- Invented driver
+- Prompt-injection-like row name
+- Invalid numeric input
+- Invalid support row
+- Stale analysis invalidation
+
+`npm run eval:live` is an optional, API-using suite for default reconciled evidence, insufficient evidence, an injection-like row name, and a non-material variance. It requires `OPENAI_API_KEY`, uses a small fixed scenario set, and judges structured output with the same deterministic guardrails rather than another LLM. It is never run by `test`, `build`, or other normal quality checks.
+
+This separation keeps normal development deterministic, fast, and free of API cost while still providing an explicit path to measure live model behavior. Qualitative writing quality remains a human-review concern; V5 does not pretend it has an objective automated score.
+
+### Portfolio Value
+
+V5 moves the project beyond a basic LLM integration by adding deterministic guardrails, adversarial test cases, and repeatable evaluation. The objective is not merely to generate plausible AI output, but to verify that AI behavior remains bounded by trusted financial logic.
+
 ## Project Structure
 
 - `app/page.tsx` contains the interactive React UI and input validation.
@@ -208,9 +312,14 @@ The UI may display deterministic V1 results immediately for responsiveness, but 
 - `lib/supporting-detail.ts` contains deterministic supporting-detail calculations, reconciliation, evidence coverage, and evidence sufficiency.
 - `lib/analysis-request.ts` validates API request payloads.
 - `lib/ai-management-analysis.ts` contains server-only OpenAI Responses API integration.
-- `lib/management-analysis-schema.ts` defines and validates the V3 structured output contract.
+- `lib/management-analysis-schema.ts` defines and validates the structured output contract.
+- `lib/analysis-guardrails.ts` checks structured claims against deterministic financial facts.
+- `lib/verified-evidence.ts` creates the instruction-separated evidence package.
+- `lib/management-analysis-prompt.ts` contains trusted model instructions.
 - `lib/ai-analysis-state.ts` contains the small client-side AI result state contract.
-- `tests/` contains focused tests for schema validation, business validation, deterministic calculations, support-row reconciliation, evidence coverage, invalid support data, zero denominators, and stale analysis reset.
+- `scripts/evaluate-v5.ts` runs the API-free twelve-scenario V5 evaluation.
+- `scripts/evaluate-live.ts` runs the optional four-scenario live-model evaluation.
+- `tests/` contains focused finance, evidence, schema, business-guardrail, adversarial-input, and stale-state tests.
 - `app/globals.css` contains the responsive FP&A-style interface styling.
 
 The calculation module is separated from the UI and OpenAI integration so it can be unit tested independently.
@@ -317,11 +426,18 @@ npm run lint
 npm run typecheck
 npm run build
 npm run test
+npm run eval
+```
+
+Optional live-model evaluation:
+
+```bash
+npm run eval:live
 ```
 
 ## OpenAI API Security
 
-V4 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
+V5 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API from a server-side Next.js route.
 
 - API key variable: `OPENAI_API_KEY`
 - Model: `gpt-5.6-luna`
@@ -330,6 +446,8 @@ V4 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - Browser calls only the local server route, never OpenAI directly.
 - No `NEXT_PUBLIC_` API key is used.
 - No real secrets are committed.
+- Normal tests and deterministic evaluations make no OpenAI calls.
+- Logs contain safe validation categories, not prompts, keys, or raw request payloads.
 
 ## Current Limitations
 
@@ -339,8 +457,9 @@ V4 uses the official OpenAI JavaScript/TypeScript SDK with the Responses API fro
 - No file upload or spreadsheet ingestion.
 - Vendor-level support identifies financial contributors, not deeper operational root causes.
 - Evidence is manually entered and not persisted.
-
-V5 will expand validation and guardrails. V4 intentionally does not implement V5+ yet.
+- Structured guardrails validate explicit fields and deterministic claims; they do not attempt brittle parsing of every possible sentence in AI prose.
+- Live-model behavior remains nondeterministic and should be reevaluated when prompts, schemas, evidence rules, or models change.
+- V5 does not add authentication, persistence, production monitoring, or the V6 interface redesign.
 
 ## Roadmap
 
@@ -348,6 +467,6 @@ V5 will expand validation and guardrails. V4 intentionally does not implement V5
 - V2 — AI API integration — COMPLETE
 - V3 — Structured JSON output — COMPLETE
 - V4 — Supporting evidence and driver analysis — COMPLETE
-- V5 — Validation and guardrails
+- V5 — Validation, guardrails, and evaluation — COMPLETE
 - V6 — Production-quality UI
 - V7 — Public deployment

@@ -8,7 +8,9 @@ import {
   type VarianceInput
 } from "@/lib/variance";
 import {
+  invalidateAiAnalysis,
   idleAiAnalysisState,
+  type AnalysisValidationStatus,
   type AiAnalysisState
 } from "@/lib/ai-analysis-state";
 import {
@@ -241,13 +243,13 @@ export default function Home() {
       ...current,
       [name]: value
     }));
-    setAiState(idleAiAnalysisState);
+    setAiState(invalidateAiAnalysis());
   }
 
   function resetDefaults() {
     setFormState(defaultFormState);
     setSupportRows(defaultSupportRows);
-    setAiState(idleAiAnalysisState);
+    setAiState(invalidateAiAnalysis());
   }
 
   function updateSupportRow(
@@ -258,7 +260,7 @@ export default function Home() {
     setSupportRows((current) =>
       current.map((row) => (row.id === id ? { ...row, [field]: value } : row))
     );
-    setAiState(idleAiAnalysisState);
+    setAiState(invalidateAiAnalysis());
   }
 
   function addSupportRow() {
@@ -271,12 +273,12 @@ export default function Home() {
         forecast: "0"
       }
     ]);
-    setAiState(idleAiAnalysisState);
+    setAiState(invalidateAiAnalysis());
   }
 
   function removeSupportRow(id: string) {
     setSupportRows((current) => current.filter((row) => row.id !== id));
-    setAiState(idleAiAnalysisState);
+    setAiState(invalidateAiAnalysis());
   }
 
   function isManagementAnalysis(value: unknown): value is ManagementAnalysis {
@@ -285,6 +287,15 @@ export default function Home() {
     }
 
     const analysis = value as Partial<Record<keyof ManagementAnalysis, unknown>>;
+    const financials = analysis.verifiedFinancials;
+
+    if (typeof financials !== "object" || financials === null) {
+      return false;
+    }
+
+    const verifiedFinancials = financials as Partial<
+      ManagementAnalysis["verifiedFinancials"]
+    >;
 
     return (
       typeof analysis.executiveCommentary === "string" &&
@@ -298,13 +309,42 @@ export default function Home() {
           driver !== null &&
           "name" in driver &&
           typeof driver.name === "string" &&
+          "varianceDollars" in driver &&
+          typeof driver.varianceDollars === "number" &&
+          Number.isFinite(driver.varianceDollars) &&
+          "contributionPercent" in driver &&
+          (driver.contributionPercent === null ||
+            (typeof driver.contributionPercent === "number" &&
+              Number.isFinite(driver.contributionPercent))) &&
           "contributionSummary" in driver &&
           typeof driver.contributionSummary === "string"
       ) &&
       Array.isArray(analysis.unknownDrivers) &&
       analysis.unknownDrivers.every((item) => typeof item === "string") &&
       Array.isArray(analysis.recommendedFollowUp) &&
-      analysis.recommendedFollowUp.every((item) => typeof item === "string")
+      analysis.recommendedFollowUp.every((item) => typeof item === "string") &&
+      typeof verifiedFinancials.forecastVarianceDollars === "number" &&
+      (verifiedFinancials.forecastVariancePercent === null ||
+        typeof verifiedFinancials.forecastVariancePercent === "number") &&
+      typeof verifiedFinancials.material === "boolean" &&
+      typeof verifiedFinancials.contributorEvidenceSufficient ===
+        "boolean" &&
+      typeof verifiedFinancials.actualReconciles === "boolean" &&
+      typeof verifiedFinancials.forecastReconciles === "boolean" &&
+      typeof verifiedFinancials.varianceReconciles === "boolean"
+    );
+  }
+
+  function isValidationStatus(
+    value: unknown
+  ): value is AnalysisValidationStatus {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      "schemaValidation" in value &&
+      value.schemaValidation === "Passed" &&
+      "businessGuardrails" in value &&
+      value.businessGuardrails === "Passed"
     );
   }
 
@@ -313,6 +353,7 @@ export default function Home() {
       setAiState({
         status: "error",
         analysis: null,
+        validation: null,
         error: "Enter valid top-level and supporting-detail inputs before requesting AI commentary."
       });
       return;
@@ -321,6 +362,7 @@ export default function Home() {
     setAiState({
       status: "loading",
       analysis: null,
+      validation: null,
       error: ""
     });
 
@@ -354,7 +396,9 @@ export default function Home() {
         typeof data !== "object" ||
         data === null ||
         !("analysis" in data) ||
-        !isManagementAnalysis(data.analysis)
+        !isManagementAnalysis(data.analysis) ||
+        !("validation" in data) ||
+        !isValidationStatus(data.validation)
       ) {
         throw new Error(
           "AI analysis returned an invalid structured result. Please try again."
@@ -364,12 +408,14 @@ export default function Home() {
       setAiState({
         status: "success",
         analysis: data.analysis,
+        validation: data.validation,
         error: ""
       });
     } catch (error) {
       setAiState({
         status: "error",
         analysis: null,
+        validation: null,
         error:
           error instanceof Error
             ? error.message
@@ -384,7 +430,7 @@ export default function Home() {
         <section className="hero" aria-labelledby="page-title">
           <p className="eyebrow">FP&amp;A Portfolio Project</p>
           <h1 id="page-title">AI FP&amp;A Variance Analyzer</h1>
-          <p className="subtitle">Deterministic Evidence + Structured AI Analysis — V4</p>
+          <p className="subtitle">Deterministic Guardrails + Evaluated AI Analysis — V5</p>
           <p className="intro">
             Financial calculations are verified by deterministic TypeScript. AI
             is used only for management interpretation.
@@ -892,7 +938,8 @@ export default function Home() {
             <h2 id="ai-heading">AI Management Analysis</h2>
             <p>
               Financial calculations are verified by deterministic TypeScript.
-              AI is used only for management interpretation.
+              AI output is schema-validated and checked against deterministic
+              financial guardrails before display.
             </p>
           </div>
 
@@ -1002,7 +1049,21 @@ export default function Home() {
 
                 <details className="developer-view">
                   <summary>Developer View</summary>
-                  <pre>{JSON.stringify(aiState.analysis, null, 2)}</pre>
+                  <p>
+                    Schema Validation: {aiState.validation?.schemaValidation}
+                    <br />
+                    Business Guardrails: {aiState.validation?.businessGuardrails}
+                  </p>
+                  <pre>
+                    {JSON.stringify(
+                      {
+                        analysis: aiState.analysis,
+                        validation: aiState.validation
+                      },
+                      null,
+                      2
+                    )}
+                  </pre>
                 </details>
               </div>
             ) : null}

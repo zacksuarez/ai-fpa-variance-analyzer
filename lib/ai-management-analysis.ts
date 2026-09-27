@@ -3,48 +3,24 @@ import "server-only";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import {
+  evaluateAnalysisGuardrails,
+  type GuardrailResult
+} from "@/lib/analysis-guardrails";
+import {
   managementAnalysisSchema,
-  validateManagementAnalysis,
-  ManagementAnalysisValidationError,
+  validateManagementAnalysisStructure,
   type ManagementAnalysis
 } from "@/lib/management-analysis-schema";
+import {
+  AI_COMMENTARY_MODEL,
+  MANAGEMENT_ANALYSIS_INSTRUCTIONS
+} from "@/lib/management-analysis-prompt";
 import type { SupportingEvidenceSummary } from "@/lib/supporting-detail";
 import type { VarianceResult } from "@/lib/variance";
-
-export const AI_COMMENTARY_MODEL = "gpt-5.6-luna";
-
-const MANAGEMENT_ANALYSIS_INSTRUCTIONS = `
-ROLE:
-You are an FP&A manager preparing monthly management reporting for a CFO.
-
-OBJECTIVE:
-Interpret verified high-level variance results and verified supporting-detail contribution analysis.
-
-EVIDENCE RULES:
-- Treat supplied financial calculations as authoritative.
-- Do not recalculate or alter supplied calculations.
-- Use only supplied evidence.
-- Identify major evidence-supported variance contributors.
-- evidenceSufficient refers only to whether the financial variance contributors are sufficiently identified.
-- Do not invent unsupported operational causes.
-- Do not claim pricing, volume, vendor, license, timing, renewal, customer, or other drivers unless evidence explicitly supports them.
-- A vendor variance is a financial contributor, not necessarily the ultimate operational root cause.
-- If contributor evidence is insufficient or unreconciled, clearly state that the contributors remain unresolved.
-- If contributor evidence is sufficient, clearly state that the contributors are identified and explain which rows account for the largest portions of the variance.
-- Reconciled contributor evidence does not establish deeper operational or causal drivers.
-- Set rootCauseKnown to false because the supplied V4 evidence contains financial contribution detail, not causal operational evidence.
-- Mention unexplained variance when non-zero.
-- Unknown drivers should describe unresolved operational causes, not present speculation as fact.
-- Distinguish known facts from unknown causes.
-- Recommended follow-up should focus on deeper causal investigation of significant contributors.
-
-STYLE:
-- concise
-- professional
-- CFO-ready
-- no unnecessary AI disclaimers
-- no fabricated precision
-`.trim();
+import {
+  buildVerifiedEvidencePackage,
+  serializeUntrustedEvidenceData
+} from "@/lib/verified-evidence";
 
 export class MissingOpenAIKeyError extends Error {
   constructor() {
@@ -67,38 +43,22 @@ export class StructuredAnalysisValidationError extends Error {
   }
 }
 
-function roundNullablePercentage(value: number | null): number | null {
-  if (value === null) {
-    return null;
+export class BusinessGuardrailValidationError extends Error {
+  constructor(public readonly result: GuardrailResult) {
+    super("Structured AI analysis violated deterministic business guardrails.");
+    this.name = "BusinessGuardrailValidationError";
   }
-
-  return Math.round(value * 10) / 10;
 }
 
-function buildVerifiedAnalysisContext(result: VarianceResult) {
-  return {
-    account: result.account,
-    period: result.period,
-    actual: result.actual,
-    forecast: result.forecast,
-    priorYear: result.priorYear,
-    forecastVarianceDollars: result.forecastVarianceAmount,
-    forecastVariancePercent: roundNullablePercentage(
-      result.forecastVariancePercent
-    ),
-    priorYearVarianceDollars: result.priorYearVarianceAmount,
-    priorYearVariancePercent: roundNullablePercentage(
-      result.priorYearVariancePercent
-    ),
-    direction: result.forecastDirection,
-    material: result.isMaterial,
-  };
-}
+export type ValidatedManagementAnalysis = {
+  analysis: ManagementAnalysis;
+  guardrails: GuardrailResult;
+};
 
 export async function generateManagementAnalysis(
   result: VarianceResult,
   supportingEvidence: SupportingEvidenceSummary
-): Promise<ManagementAnalysis> {
+): Promise<ValidatedManagementAnalysis> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -106,37 +66,15 @@ export async function generateManagementAnalysis(
   }
 
   const client = new OpenAI({ apiKey });
-  const verifiedContext = buildVerifiedAnalysisContext(result);
-  const verifiedEvidence = {
-    topLevel: verifiedContext,
-    supportingEvidence: supportingEvidence.rankedRows.map((row) => ({
-      name: row.name,
-      actual: row.actual,
-      forecast: row.forecast,
-      varianceDollars: row.varianceDollars,
-      variancePercent: roundNullablePercentage(row.variancePercent),
-      contributionPercent: roundNullablePercentage(row.contributionPercent)
-    })),
-    reconciliation: {
-      actualReconciles: supportingEvidence.actualReconciles,
-      forecastReconciles: supportingEvidence.forecastReconciles,
-      varianceReconciles: supportingEvidence.varianceReconciles,
-      evidenceCoveragePercent: roundNullablePercentage(
-        supportingEvidence.evidenceCoveragePercent
-      ),
-      unexplainedVariance: supportingEvidence.unexplainedVariance,
-      evidenceSufficient: supportingEvidence.evidenceSufficient
-    }
-  };
+  const verifiedEvidence = buildVerifiedEvidencePackage(
+    result,
+    supportingEvidence
+  );
 
   const response = await client.responses.parse({
     model: AI_COMMENTARY_MODEL,
     instructions: MANAGEMENT_ANALYSIS_INSTRUCTIONS,
-    input: `Verified financial analysis and supporting evidence:\n${JSON.stringify(
-      verifiedEvidence,
-      null,
-      2
-    )}`,
+    input: serializeUntrustedEvidenceData(verifiedEvidence),
     text: {
       format: zodTextFormat(
         managementAnalysisSchema,
@@ -157,18 +95,28 @@ export async function generateManagementAnalysis(
     throw new EmptyModelResponseError();
   }
 
-  try {
-    return validateManagementAnalysis(analysis, {
-      contributorEvidenceSufficient: supportingEvidence.evidenceSufficient,
-      causalEvidenceSufficient: false
-    });
-  } catch (error) {
-    if (error instanceof ManagementAnalysisValidationError) {
-      throw new StructuredAnalysisValidationError(error.message);
-    }
+  let structuredAnalysis: ManagementAnalysis;
 
+  try {
+    structuredAnalysis = validateManagementAnalysisStructure(analysis);
+  } catch {
     throw new StructuredAnalysisValidationError(
-      "Structured AI analysis did not match the required V3 contract."
+      "Structured AI analysis did not match the required application contract."
     );
   }
+
+  const guardrails = evaluateAnalysisGuardrails(structuredAnalysis, {
+    variance: result,
+    supportingEvidence,
+    causalEvidenceAvailable: false
+  });
+
+  if (!guardrails.passed) {
+    throw new BusinessGuardrailValidationError(guardrails);
+  }
+
+  return {
+    analysis: structuredAnalysis,
+    guardrails
+  };
 }
