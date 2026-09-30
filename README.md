@@ -2,15 +2,21 @@
 
 AI FP&A Variance Analyzer is a portfolio-grade finance application that combines deterministic variance calculations, reconciled supporting evidence, structured AI interpretation, and server-side business guardrails.
 
-V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 added supporting-detail evidence and reconciliation. V5 added explicit trust boundaries, deterministic output guardrails, adversarial tests, and repeatable evaluation. V6 presents those capabilities through a production-quality, responsive workflow.
+V1 established the deterministic variance engine. V2 added server-side AI commentary. V3 replaced free-form commentary with schema-enforced structured AI output. V4 added supporting-detail evidence and reconciliation. V5 added explicit trust boundaries, deterministic output guardrails, adversarial tests, and repeatable evaluation. V6 presents those capabilities through a production-quality, responsive workflow. V7 makes the complete application publicly available on Vercel.
 
 ## Live Demo
 
-Public deployment is planned for V7. The complete V6 application runs locally today using the instructions below.
+[Open the live AI FP&A Variance Analyzer](https://ai-fpa-variance-analyzer.vercel.app)
+
+## Production Deployment
+
+The public application is hosted on Vercel. `OPENAI_API_KEY` is configured as a server-side Vercel environment variable and is never included in the client bundle.
+
+Production testing verified the public workflow end to end: deterministic calculations, supporting-detail reconciliation, 100% default evidence coverage, successful structured AI output, schema validation, and business guardrails. The default analysis correctly identifies Salesforce and Snowflake as the two largest financial variance contributors while keeping the underlying causal drivers explicitly unresolved.
 
 ## Screenshots
 
-The repository includes a [screenshot guide](docs/screenshots/README.md) with the views and filenames reserved for the public portfolio release. No placeholder screenshots are presented as real product captures.
+The repository includes a [screenshot guide](docs/screenshots/README.md) with recommended views and filenames for portfolio captures. No placeholder screenshots are presented as real product captures.
 
 ## What It Demonstrates
 
@@ -45,7 +51,7 @@ The browser calculates an immediate preview, but the server independently recomp
 | V4 | Supporting evidence and reconciliation | Complete |
 | V5 | Guardrails, adversarial tests, and evaluation | Complete |
 | V6 | Production-quality portfolio UI | Complete |
-| V7 | Public deployment | Planned |
+| V7 | Public deployment on Vercel | Complete |
 
 ## Reliability
 
@@ -497,7 +503,8 @@ The application uses the official OpenAI JavaScript/TypeScript SDK with the Resp
 - Model: `gpt-5.6-luna`
 - Route: `POST /api/analyze`
 - Output: schema-enforced structured JSON parsed into typed application data
-- Browser calls only the local server route, never OpenAI directly.
+- Browser calls only the application server route, never OpenAI directly.
+- Production configures `OPENAI_API_KEY` as a server-side Vercel environment variable.
 - No `NEXT_PUBLIC_` API key is used.
 - No real secrets are committed.
 - Normal tests and deterministic evaluations make no OpenAI calls.
@@ -513,7 +520,7 @@ The application uses the official OpenAI JavaScript/TypeScript SDK with the Resp
 - Evidence is manually entered and not persisted.
 - Structured guardrails validate explicit fields and deterministic claims; they do not attempt brittle parsing of every possible sentence in AI prose.
 - Live-model behavior remains nondeterministic and should be reevaluated when prompts, schemas, evidence rules, or models change.
-- V6 does not add authentication, persistence, production monitoring, or public deployment.
+- V7 deployment does not add authentication, persistence, or production monitoring.
 
 ## Roadmap
 
@@ -523,4 +530,4 @@ The application uses the official OpenAI JavaScript/TypeScript SDK with the Resp
 - V4 — Supporting evidence and driver analysis — COMPLETE
 - V5 — Validation, guardrails, and evaluation — COMPLETE
 - V6 — Production-quality UI — COMPLETE
-- V7 — Public deployment
+- V7 — Public deployment — COMPLETE
