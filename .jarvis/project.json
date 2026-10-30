@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "name": "ai-fpa-variance-analyzer",
+  "owner": "zacksuarez",
+  "role": "portfolio-ai-app",
+  "status": "active",
+  "visibilityPolicy": "public-portfolio",
+  "chatgptProjects": [
+    "AI Learning"
+  ],
+  "chatAliases": [
+    "AI Learning Roadmap"
+  ],
+  "validation": {
+    "automated": [
+      "npm ci",
+      "npm run typecheck",
+      "npm run lint",
+      "npm test",
+      "npm run eval",
+      "npm run build"
+    ],
+    "local": [
+      "Run live-model evaluation only when explicitly requested and a server-side key is available"
+    ]
+  },
+  "requiresLocalWorkspace": false,
+  "notes": [
+    "Deterministic finance logic is authoritative",
+    "Never expose OPENAI_API_KEY to the client"
+  ]
+}
